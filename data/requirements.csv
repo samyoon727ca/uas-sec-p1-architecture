@@ -1,1 +1,2 @@
 req_id,statement,rationale,allocated_to,verification,evidence_repo,resiliency_technique
+SR-001,The CC shall discard all traffic on its radio interface except WireGuard traffic from the provisioned GCS peer.,"Keeps RF-injected MAVLink, including the four messages PX4 accepts unsigned, from reaching the MAVLink router or the FC (THR-001). Verified by VE-01.",CMP-CC,T,P3,Segmentation; Coordinated Protection
