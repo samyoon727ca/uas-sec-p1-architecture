@@ -6,6 +6,43 @@ Element IDs match [`data/elements.csv`](../data/elements.csv). The same architec
 
 ## 4.1 Data flow diagrams
 
+**System context**
+
+```mermaid
+flowchart LR
+  OP["EE-OP<br/>Operator"]
+  MNT["EE-MNT<br/>Maintainer"]
+  UP["EE-UPSTREAM<br/>Upstream sources"]
+  GNSS["EE-GNSS<br/>GNSS signals"]
+
+  subgraph GROUND["Ground"]
+    GCS("CMP-GCS<br/>Ground control station")
+    MSS("CMP-MSS<br/>Maintenance station")
+  end
+
+  subgraph AV["Air vehicle"]
+    CC("CMP-CC<br/>Companion computer")
+    FC("CMP-FC<br/>Flight controller")
+    PER("CMP-PL, CMP-NAV, CMP-ACT<br/>Payload, navigation, actuators")
+  end
+
+  OP --> GCS
+  MNT --> MSS
+  UP -->|TB-05| MSS
+  MSS --> GCS
+  GCS <-->|"WireGuard<br/>TB-01"| CC
+  MSS -.->|"wired<br/>TB-03"| AV
+  CC <-->|"signed<br/>TB-02"| FC
+  GNSS -->|TB-06| PER
+  PER <--> FC
+  PER --> CC
+
+  classDef c2base stroke:#c0392b,stroke-width:3px
+  class FC,CC,GCS,MSS c2base
+```
+
+*Edge labels name the trust boundary each flow crosses. The two diagrams below give every data flow by ID.*
+
 **Operational flows (in flight)**
 
 ```mermaid
