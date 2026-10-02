@@ -2,7 +2,7 @@
 
 All command and control (C2) passes through the companion computer (CC) on its way to the flight controller (FC). A WireGuard tunnel protects the air-ground link. PX4 MAVLink signing is designed to authenticate commands from the GCS all the way to the FC. That has not been demonstrated with the pinned GCS and PX4 versions (OI-01). PX4 uses one shared signing key, so every key holder is inside the C2 trust base: FC, CC, GCS and MSS. The CC is the most exposed of them.
 
-Element IDs match [`data/elements.csv`](../data/elements.csv). Source tags such as [PX4-SIGN] point to [references](references.md).
+Element IDs match [`data/elements.csv`](../data/elements.csv). The same architecture is modeled in SysML v2 in [`model/sysml/`](../model/sysml/). Source tags such as [PX4-SIGN] point to [references](references.md).
 
 ## 4.1 Data flow diagrams
 
