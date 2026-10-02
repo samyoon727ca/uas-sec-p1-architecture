@@ -2,7 +2,9 @@
 """Validate the P1 traceability data in data/*.csv.
 
 Checks schema, ID format and uniqueness, referential integrity, threat
-dispositions, requirement quality, and STRIDE-per-element coverage.
+dispositions, requirement quality, STRIDE-per-element applicability and
+coverage, and that EMB3D and ATT&CK for ICS IDs exist in the pinned catalogs
+under data/catalogs/.
 Exits 1 if any error is found. Standard library only.
 
 Usage:
@@ -43,6 +45,20 @@ ELEMENT_ID = {
 # Trust boundaries are not STRIDE elements; threats are recorded against the
 # flows that cross them.
 STRIDE_ELEMENT_TYPES = {"process", "external_entity", "data_store", "data_flow"}
+# Which STRIDE categories apply to each element type: Microsoft's
+# STRIDE-per-element chart (MSDN Magazine, November 2006, Figure 5).
+STRIDE_APPLICABLE = {
+    "process": set("STRIDE"),
+    "external_entity": {"S", "R"},
+    "data_store": {"T", "I", "D"},
+    "data_flow": {"T", "I", "D"},
+}
+
+# Pinned framework catalogs (see data/catalogs/README.md).
+CATALOGS = {
+    "emb3d": "catalogs/emb3d-v2.0.2.csv",
+    "attack_ics": "catalogs/attack-ics-v19.2.csv",
+}
 
 THREAT_ID = re.compile(r"^THR-\d{3}$")
 REQ_ID = re.compile(r"^SR-\d{3}$")
@@ -173,24 +189,49 @@ def check_elements(rows: list[dict], report: Report) -> dict[str, dict]:
     return index
 
 
-def check_threats(rows: list[dict], elements: dict, report: Report) -> dict[str, dict]:
+def load_catalogs(data_dir: Path, report: Report) -> dict[str, set[str]] | None:
+    """Load the pinned framework ID catalogs. None if any is unusable."""
+    catalogs: dict[str, set[str]] = {}
+    for key, rel in CATALOGS.items():
+        path = data_dir / rel
+        if not path.is_file():
+            report.error(rel, "catalog file not found")
+            return None
+        with path.open(newline="", encoding="utf-8-sig") as f:
+            reader = csv.DictReader(f)
+            if not reader.fieldnames or "id" not in reader.fieldnames:
+                report.error(rel, "catalog must have an 'id' column")
+                return None
+            catalogs[key] = {row["id"].strip() for row in reader if row["id"]}
+    return catalogs
+
+
+def check_threats(rows: list[dict], elements: dict, catalogs: dict, report: Report) -> dict[str, dict]:
     index = index_unique(rows, "threat_id", THREAT_ID, report)
     for row in index.values():
         where = row["_where"]
         require(row, ["title", "description"], report)
-        eid = row["element_id"]
+        eid, stride = row["element_id"], row["stride"]
+        if stride not in STRIDE:
+            report.error(where, f"stride '{stride}' must be one of S,T,R,I,D,E")
         if eid not in elements:
             report.error(where, f"element_id '{eid}' is not a known element")
         elif elements[eid]["type"] not in STRIDE_ELEMENT_TYPES:
             report.error(where, f"element_id '{eid}' is a trust boundary; record the threat on a crossing data flow")
-        if row["stride"] not in STRIDE:
-            report.error(where, f"stride '{row['stride']}' must be one of S,T,R,I,D,E")
+        elif stride in STRIDE and stride not in STRIDE_APPLICABLE[elements[eid]["type"]]:
+            etype = elements[eid]["type"]
+            allowed = ",".join(c for c in "STRIDE" if c in STRIDE_APPLICABLE[etype])
+            report.error(where, f"stride '{stride}' does not apply to {etype} elements (allowed: {allowed})")
         for tid in split_multi(row["emb3d"]):
             if not EMB3D_ID.match(tid):
                 report.error(where, f"malformed EMB3D ID '{tid}' (expected TID-###)")
+            elif tid not in catalogs["emb3d"]:
+                report.error(where, f"EMB3D ID '{tid}' is not in the pinned catalog ({CATALOGS['emb3d']})")
         for tid in split_multi(row["attack_ics"]):
             if not ATTACK_ICS_ID.match(tid):
                 report.error(where, f"malformed ATT&CK for ICS ID '{tid}' (expected T#### or T####.###)")
+            elif tid not in catalogs["attack_ics"]:
+                report.error(where, f"ATT&CK for ICS ID '{tid}' is not in the pinned catalog ({CATALOGS['attack_ics']})")
         if row["mission_impact"] not in MISSION_IMPACT:
             report.error(where, f"mission_impact '{row['mission_impact']}' must be one of {sorted(MISSION_IMPACT)}")
         disposition = row["disposition"]
@@ -275,11 +316,12 @@ def check_closure(elements, threats, reqs, links, report: Report, allow_unanalyz
 def validate(data_dir: Path, allow_unanalyzed: bool = False) -> Report:
     report = Report()
     loaded = {name: load(data_dir / name, report) for name in SCHEMAS}
-    if any(rows is None for rows in loaded.values()):
+    catalogs = load_catalogs(data_dir, report)
+    if catalogs is None or any(rows is None for rows in loaded.values()):
         return report
 
     elements = check_elements(loaded["elements.csv"], report)
-    threats = check_threats(loaded["threats.csv"], elements, report)
+    threats = check_threats(loaded["threats.csv"], elements, catalogs, report)
     reqs = check_requirements(loaded["requirements.csv"], elements, report)
     links = check_trace(loaded["trace.csv"], threats, reqs, report)
     check_closure(elements, threats, reqs, links, report, allow_unanalyzed)

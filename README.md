@@ -8,27 +8,29 @@ This repo is the security architecture, threat model and derived requirements fo
 
 ## Threat
 
-_Status: architecture complete; STRIDE-per-element analysis next._
+65 threats, analyzed STRIDE per element across all 40 data-flow-diagram elements and mapped to MITRE EMB3D v2.0.2 and ATT&CK for ICS v19.2. Mission-impact ratings: 41 MI-1, 16 MI-2, 6 MI-3, 2 MI-4. 62 are mitigated and 3 accepted with rationale.
 
-**Headline finding from the architecture.** PX4 MAVLink signing uses one shared key. The FC, companion computer (CC), GCS and maintenance station (MSS) all hold it, so compromising any of them gives full vehicle C2. The CC is the most exposed: it terminates the RF link, runs general-purpose Linux, and stays connected throughout flight. The threat model will carry CC compromise as a top threat. Five other inputs come out of the architecture:
+**Headline finding.** PX4 MAVLink signing uses one shared key. The FC, companion computer (CC), GCS and maintenance station (MSS) all hold it, so most MI-1 threats end the same way: an adversary holds that key, or runs code on a node that does.
 
-- no per-node attribution of signed commands;
-- the signing key file on the FC's SD card;
-- the provisioning window before any key exists;
-- the four message types PX4 accepts unsigned;
-- GCS-loss detection that relies on unsigned heartbeats.
+**Priority threats:**
 
-The last input is already a named threat. **THR-001** (MI-1): spoofed GCS heartbeats suppress the data-link-loss failsafe while the real link is down. It is mitigated by SR-001; the residual risk is a compromised CC or GCS.
+| Threat | Impact | Mitigated by |
+|---|---|---|
+| THR-010 Code execution on the CC yields full vehicle C2 | MI-1 | SR-001, SR-005, SR-008, SR-009 |
+| THR-001 Spoofed GCS heartbeats suppress the data-link-loss failsafe | MI-1 | SR-001 (tested by VE-01) |
+| THR-026, THR-027 Signing key read, replaced or deleted on the FC's SD card | MI-1 | SR-023, SR-025, SR-036 |
+| THR-057 Unauthorized peer installs the first signing key | MI-2 | SR-011, SR-025, SR-037 |
+| THR-021, THR-063 Malicious code enters signed artifacts | MI-1 | SR-031, SR-032, SR-033 |
 
-See [§4.2](docs/04-architecture.md#42-c2-trust-base) and [`docs/05-threat-model.md`](docs/05-threat-model.md).
+The full analysis, STRIDE coverage matrix, accepted risks and residual risk are in [`docs/05-threat-model.md`](docs/05-threat-model.md).
 
 ## Requirements
 
-_Status: one seeded; the rest follow the threat model._ Each "shall" requirement traces to a parent threat, is allocated to one component, and names a verification method and an evidence repo.
+44 derived "shall" requirements. Each one traces to at least one threat, is allocated to one component (CC 15, MSS 13, FC 9, GCS 7), and names a verification method (Test 23, Inspection 13, Demonstration 8) and an evidence repo.
 
-**SR-001** (CMP-CC): the CC shall discard all traffic on its radio interface except WireGuard traffic from the provisioned GCS peer. Method: Test (VE-01). Evidence: P3.
+Example: **SR-001** (CC) — the CC shall discard all traffic on its radio interface except WireGuard traffic from the provisioned GCS peer. Verified by Test (VE-01), with evidence from P3.
 
-See [`data/requirements.csv`](data/requirements.csv).
+The full table with parent threats is in [`docs/07-requirements.md`](docs/07-requirements.md).
 
 ## Design
 
@@ -61,21 +63,22 @@ Traceability is checked automatically on every push. [`tools/validate_trace.py`]
 - a threat is neither mitigated nor explicitly accepted;
 - a requirement has no parent threat, has no allocated component, or can't be verified;
 - an ID is orphaned;
-- an architecture element has no threat analysis.
-
-Until the threat model lands, CI runs with `--allow-unanalyzed`, so elements without threat analysis show up as warnings instead of failures.
+- an architecture element has no threat analysis;
+- a STRIDE category is applied to an element type it doesn't fit;
+- an EMB3D or ATT&CK for ICS ID is not in the pinned catalog (revoked IDs included);
+- a generated doc view has drifted from the CSVs.
 
 The column rules are in [`data/README.md`](data/README.md).
 
 Evidence for each requirement will come from the follow-on repos:
 
-| Repo | Scope | Status |
-|---|---|---|
-| P2 | Verified boot chain | Planned |
-| P3 | PKI, key management and signed updates; SITL harness for VE-01 and VE-02 | Planned |
-| P4 | Hardened embedded Linux and supply-chain pipeline | Planned |
-| P5 | Hardware and firmware security assessment | Planned |
-| P6 | RMF-as-code (OSCAL) | Planned |
+| Repo | Scope | Requirements | Status |
+|---|---|---|---|
+| P2 | Verified boot chain | 3 | Planned |
+| P3 | PKI, key management and signed updates; SITL harness for VE-01 and VE-02 | 13 | Planned |
+| P4 | Hardened CC image, MSS pipeline and supply chain | 14 | Planned |
+| P5 | Hardware and firmware security assessment | 2 | Planned |
+| P6 | RMF-as-code (OSCAL): configuration and procedure evidence | 12 | Planned |
 
 ## Repository map
 
@@ -85,12 +88,12 @@ Evidence for each requirement will come from the follow-on repos:
 | [`docs/02-conops.md`](docs/02-conops.md) | Mission phases, actors, modes, contingencies | Draft for review |
 | [`docs/03-assumptions.md`](docs/03-assumptions.md) | Labeled assumptions `A-##` | Draft for review |
 | [`docs/04-architecture.md`](docs/04-architecture.md) | Data flows, trust boundaries, C2 trust base, design decisions | Draft for review |
-| [`docs/05-threat-model.md`](docs/05-threat-model.md) | STRIDE per element, EMB3D, ATT&CK for ICS | Planned |
+| [`docs/05-threat-model.md`](docs/05-threat-model.md) | STRIDE per element, EMB3D, ATT&CK for ICS, priority and accepted risks | Draft for review |
 | [`docs/06-cyber-resiliency.md`](docs/06-cyber-resiliency.md) | NIST SP 800-160 Vol. 2 techniques mapped to the design | Planned |
-| [`docs/07-requirements.md`](docs/07-requirements.md) | Requirement conventions | Planned |
+| [`docs/07-requirements.md`](docs/07-requirements.md) | Requirement conventions; full table with parent threats | Draft for review |
 | [`docs/08-verification-plan.md`](docs/08-verification-plan.md) | I/A/D/T methods; VE-01 (heartbeat spoofing test), VE-02 (signed-C2 demo) | Started |
 | [`docs/references.md`](docs/references.md) | Sources, with pinned versions | Draft for review |
-| [`data/`](data/) | Elements, threats, requirements, trace (CSV) | Elements populated; THR-001 and SR-001 seeded |
+| [`data/`](data/) | Elements, threats, requirements, trace (CSV); pinned framework catalogs | Populated |
 | `model/sysml/` | SysML v2 textual model | Planned |
 | `brief/` | ~10-slide PDR-style brief (Marp) | Planned |
 
@@ -99,6 +102,7 @@ Evidence for each requirement will come from the follow-on repos:
 ```sh
 python -m unittest discover -s tests
 python tools/validate_trace.py
+python tools/render_views.py --check
 ```
 
 Python 3.11+. Standard library only.

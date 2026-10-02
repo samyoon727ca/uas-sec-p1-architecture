@@ -120,21 +120,23 @@ flowchart LR
 
 **What follows for the threat model:**
 
-1. **Any key holder can forge any command.** Compromising the CC, GCS or MSS, or reading DS-FC-KEY, gives full vehicle C2. That includes the actions PX4 lists as at risk: parameter writes, mission upload, arm/disarm, flight termination and shell access through `SERIAL_CONTROL` [PX4-HARD].
+1. **Any key holder can forge any command.** Compromising the CC, GCS or MSS, or reading DS-FC-KEY, gives full vehicle C2 (THR-010, THR-016, THR-019, THR-020, THR-023, THR-026). That includes the actions PX4 lists as at risk: parameter writes, mission upload, arm/disarm, flight termination and shell access through `SERIAL_CONTROL` [PX4-HARD].
 2. **The CC is the most exposed holder.**
    - It terminates the tunnel and parses MAVLink arriving over the RF link.
    - It runs general-purpose Linux, the largest software surface on the vehicle.
    - It is powered and connected throughout flight.
 
-   CC compromise will be carried into the threat model as a top threat. Protecting it is the job of P2 (verified boot) and P4 (hardened image and supply chain).
-3. **No per-node attribution.** The FC can't tell which holder signed a frame. Repudiation can't be resolved from MAVLink alone.
-4. **The key file is a physical target.** With access to the SD card, an adversary can read the key (and become a holder), replace it, or delete it (which disables signing).
-5. **Provisioning window.** Before a key exists, any peer that reaches any FC link can install its own key. That locks out the GCS, and recovery is physical. The window comes from the v1.18 change that accepts `SETUP_SIGNING` on any link instead of USB only [PX4-1.18], [PX4-PR26894]. A-14 narrows it; the threat model keeps it.
+   CC compromise is the top threat in the threat model (THR-010). Protecting it is the job of P2 (verified boot) and P4 (hardened image and supply chain).
+3. **No per-node attribution.** The FC can't tell which holder signed a frame. Repudiation can't be resolved from MAVLink alone (THR-004).
+4. **The key file is a physical target.** With access to the SD card, an adversary can read the key (and become a holder), replace it, or delete it (which disables signing) (THR-026, THR-027).
+5. **Provisioning window.** Before a key exists, any peer that reaches any FC link can install its own key. That locks out the GCS, and recovery is physical. The window comes from the v1.18 change that accepts `SETUP_SIGNING` on any link instead of USB only [PX4-1.18], [PX4-PR26894]. A-14 narrows it; the threat model keeps it (THR-057).
 6. **Unsigned allowlist.** Anyone who reaches an FC link can spoof the four messages PX4 accepts unsigned. `HEARTBEAT` matters most: PX4 derives GCS liveness from heartbeats with `MAV_TYPE_GCS` [PX4-SRC]. This is seeded as **THR-001**, rated MI-1, in [`data/threats.csv`](../data/threats.csv):
    - **Threat.** While the real GCS link is jammed or down, spoofed GCS heartbeats keep the data-link-loss failsafe (DD-05) from triggering, and the vehicle flies on without C2.
    - **Primary mitigation.** SR-001: the CC accepts only WireGuard traffic from the GCS peer on its radio interface, so RF-injected heartbeats never reach the FC.
    - **Residual risk.** A compromised CC or GCS. Both are already inside the C2 trust base.
    - **Verification.** VE-01, a SITL test ([§8](08-verification-plan.md)).
+
+   The other three unsigned messages are THR-050 (`ADSB_VEHICLE`, `COLLISION`) and THR-051 (`RADIO_STATUS`).
 
 ## 4.3 Command path and protection layers
 
@@ -182,3 +184,4 @@ sequenceDiagram
 | ID | Item | Closed by | Status |
 |---|---|---|---|
 | OI-01 | QGroundControl v5.1.5 has a signing implementation, but it has not been shown to work with PX4 v1.18's spec-compliant signing. Until it is, no document claims that signing works end to end | VE-02 passes (P3) | Open |
+| OI-02 | PX4 signing uses one key for every node, so any key-holder compromise is full C2 (§5.5). Options for authenticating each node to the FC have not been evaluated | Trade study in P3 | Open |

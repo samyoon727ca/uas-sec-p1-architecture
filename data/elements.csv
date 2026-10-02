@@ -8,8 +8,8 @@ CMP-RAD-A,Air data-link radio,process,,,,,IP radio; Ethernet to CMP-CC,Air side 
 CMP-RAD-G,Ground data-link radio,process,,,,,IP radio; Ethernet to CMP-GCS,Ground side of the IP data link. Untrusted transport (A-05).,
 CMP-GCS,Ground control station,process,,,,,Linux laptop; QGroundControl; WireGuard,"Mission planning, C2, telemetry and video display. Holds the shared signing key; inside the C2 trust base.",
 CMP-MSS,Maintenance and support station,process,,,,,Linux workstation; wired connections only,"Builds, signs and loads software; provisions keys; receives post-flight offload. Holds the shared signing key; inside the C2 trust base.",
-EE-OP,Operator,external_entity,,,,,,Pilot-in-command and mission operator at the GCS. Trusted but fallible (A-08).,
-EE-MNT,Maintainer,external_entity,,,,,,"Performs builds, loading, key provisioning and offload at the MSS. Trusted but fallible (A-08).",
+EE-OP,Operator,external_entity,,,,,,Pilot-in-command and mission operator at the GCS. Trusted but fallible (A-08).,Spoofing of the operator is analyzed at CMP-GCS (THR-016) and repudiation at CMP-GCS (THR-018). The operator has no interface other than the GCS.
+EE-MNT,Maintainer,external_entity,,,,,,"Performs builds, loading, key provisioning and offload at the MSS. Trusted but fallible (A-08).",Spoofing of the maintainer is analyzed at CMP-MSS (THR-020) and repudiation at CMP-MSS (THR-022). The maintainer has no interface other than the MSS.
 EE-GNSS,GNSS signals,external_entity,,,,,,Civil GNSS signals in space (A-10).,
 EE-UPSTREAM,Upstream software sources,external_entity,,,,,,"Open-source projects, package repositories and toolchains the MSS builds from (PX4, Linux distribution, QGroundControl, libraries).",
 DS-FC-KEY,FC MAVLink signing key file,data_store,CMP-FC,,,,microSD: /mavlink/mavlink-signing-key.bin,"40-byte file: 32-byte shared secret key plus 64-bit timestamp. Readable, writable or removable by anyone with access to the SD card.",
@@ -31,14 +31,14 @@ DF-06,Payload imagery,data_flow,,CMP-PL,CMP-CC,,USB or CSI,Raw imagery and video
 DF-07,GNSS signals,data_flow,,EE-GNSS,CMP-NAV,TB-06,RF (civil GNSS),Satellite navigation signals received over the air.,
 DF-08,Navigation data,data_flow,,CMP-NAV,CMP-FC,,UART/I2C or DroneCAN,"Position, velocity, time and heading.",
 DF-09,Actuator commands,data_flow,,CMP-FC,CMP-ACT,,PWM/DShot or DroneCAN,Motor and ESC commands.,
-DF-10,Operator input,data_flow,,EE-OP,CMP-GCS,TB-04,GCS user interface,"Mission plans, commands and manual control.",
+DF-10,Operator input,data_flow,,EE-OP,CMP-GCS,TB-04,GCS user interface,"Mission plans, commands and manual control.","Local user-interface input inside the GCS host boundary. Tampering, disclosure or denial requires control of the GCS host, analyzed at CMP-GCS (THR-016, THR-019)."
 DF-11,FC maintenance load,data_flow,,CMP-MSS,CMP-FC,TB-03,USB; MAVLink 2 (signed once a key exists),"Firmware load, parameters and initial signing-key provisioning (SETUP_SIGNING) while disarmed.",
 DF-12,CC maintenance load,data_flow,,CMP-MSS,CMP-CC,TB-03,Wired Ethernet or USB,"System images, configuration and credentials (signing key, WireGuard keys).",
 DF-13,GCS provisioning,data_flow,,CMP-MSS,CMP-GCS,TB-04,Wired connection or removable media,"GCS software, signing key and WireGuard keys.",
 DF-14,CC data offload,data_flow,,CMP-CC,CMP-MSS,TB-03,Wired Ethernet or USB,Post-flight imagery and CC logs.,
 DF-15,FC log offload,data_flow,,CMP-FC,CMP-MSS,TB-03,USB or SD card removal,Post-flight ULogs.,
 DF-16,Upstream software intake,data_flow,,EE-UPSTREAM,CMP-MSS,TB-05,HTTPS/git,"Source code, packages, toolchains and third-party binaries.",
-DF-17,Maintainer actions,data_flow,,EE-MNT,CMP-MSS,,MSS user interface,"Build, sign, load, provision and offload commands.",
+DF-17,Maintainer actions,data_flow,,EE-MNT,CMP-MSS,,MSS user interface,"Build, sign, load, provision and offload commands.","Local console input inside the MSS. Tampering, disclosure or denial requires control of the MSS, analyzed at CMP-MSS (THR-020, THR-023)."
 TB-01,Air-ground RF link,trust_boundary,,,,,,"Everything between the radios is observable and injectable by an RF-proximate adversary, including jamming.",
 TB-02,Flight-critical / mission-computing boundary,trust_boundary,,,,,,Separates the RTOS flight controller from the general-purpose Linux companion computer. Baseline interface: MAVLink 2 over UART only (DD-03).,
 TB-03,Air vehicle physical boundary,trust_boundary,,,,,,"On-board storage and maintenance and debug interfaces are exposed if the vehicle is lost, captured or left unattended.",

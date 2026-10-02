@@ -1,0 +1,82 @@
+id,name,category
+TID-101,Power Consumption Analysis Side Channel,hardware
+TID-102,Electromagnetic Analysis Side Channel,hardware
+TID-103,Microarchitectural Side Channels,hardware
+TID-105,Hardware Fault Injection – Control Flow Modification,hardware
+TID-106,Data Bus Interception,hardware
+TID-107,Unauthorized Direct Memory Access (DMA),hardware
+TID-108,ROM/NVRAM Data Extraction or Modification,hardware
+TID-109,RAM Chip Contents Readout,hardware
+TID-110,Hardware Fault Injection – Data Manipulation,hardware
+TID-111,Untrusted External Storage,hardware
+TID-113,Unverified Peripheral Firmware Loaded,hardware
+TID-114,Peripheral Data Bus Interception,hardware
+TID-115,Firmware/Data Extraction via Hardware Interface,hardware
+TID-116,Latent Privileged Access Port,hardware
+TID-118,Weak Peripheral Port Electrical Damage Protection,hardware
+TID-119,Latent Hardware Debug Port Allows Memory/Code Manipulation,hardware
+TID-201,Inadequate Bootloader Protection and Verification,system software
+TID-202,Exploitable System Network Stack Component,system software
+TID-203,Malicious OS Kernel Driver/Module Installable,system software
+TID-204,Untrusted Programs Can Access Privileged OS Functions,system software
+TID-205,Existing OS Tools Maliciously Used for Device Manipulation,system software
+TID-206,Memory Management Protections Subverted,system software
+TID-207,Container Escape,system software
+TID-208,Virtual Machine Escape,system software
+TID-209,Host Can Manipulate Guest Virtual Machines,system software
+TID-210,Device Vulnerabilities Unpatchable,system software
+TID-211,Device Allows Unauthenticated Firmware Installation,system software
+TID-212,FW/SW Update Integrity Shared Secrets Extraction,system software
+TID-213,Faulty FW/SW Update Integrity Verification,system software
+TID-214,Secrets Extracted from Device Root of Trust,system software
+TID-215,Unencrypted SW/FW Updates,system software
+TID-216,Firmware Update Rollbacks Allowed,system software
+TID-217,Remotely Initiated Updates Can Cause DoS,system software
+TID-218,Operating System Susceptible to Rootkit,system software
+TID-219,OS/Kernel Privilege Escalation,system software
+TID-220,Unpatchable Hardware Root of Trust,system software
+TID-221,Authentication Bypass By Message Replay,system software
+TID-222,Critical System Service May Be Disabled,system software
+TID-223,System Susceptible to RAM Scraping,system software
+TID-224,Excessive Access via Software Diagnostic Features,system software
+TID-225,Logs can be manipulated on the device,system software
+TID-226,Device leaks security information in logs,system software
+TID-301,Applications Binaries Modified,application software
+TID-302,Install Untrusted Application,application software
+TID-303,Excessive Trust in Offboard Management/IDE Software,application software
+TID-304,Manipulate Runtime Environment,application software
+TID-305,Program Executes Dangerous System Calls,application software
+TID-306,Sandboxed Environments Escaped,application software
+TID-307,Device Code Representations Inconsistent,application software
+TID-308,Code Overwritten to Avoid Detection,application software
+TID-309,Device Exploits Engineering Workstation,application software
+TID-310,Remotely Accessible Unauthenticated Services,application software
+TID-311,Default Credentials,application software
+TID-312,Credential Change Mechanism Can Be Abused,application software
+TID-313,Unauthenticated Session Changes Credential,application software
+TID-314,Passwords Can Be Guessed Using Brute-Force Attempts,application software
+TID-315,Password Retrieval Mechanism Abused,application software
+TID-316,Incorrect Certificate Verification Allows Authentication Bypass,application software
+TID-317,Predictable Cryptographic Key,application software
+TID-318,Insecure Cryptographic Implementation,application software
+TID-319,Cross Site Scripting (XSS),application software
+TID-320,SQL Injection,application software
+TID-321,HTTP Application Session Hijacking,application software
+TID-322,Cross Site Request Forgery (CSRF),application software
+TID-323,Path Traversal,application software
+TID-324,HTTP Direct Object Reference,application software
+TID-325,HTTP Injection/Response Splitting,application software
+TID-326,Insecure Deserialization,application software
+TID-327,Out of Bounds Memory Access,application software
+TID-328,Hardcoded Credentials,application software
+TID-329,Improper Password Storage,application software
+TID-330,Cryptographic Timing Side-Channel,application software
+TID-401,Undocumented Protocol Features,networking
+TID-404,Remotely Triggerable Deadlock/DoS,networking
+TID-405,Network Stack Resource Exhaustion,networking
+TID-406,Unauthorized Messages or Connections,networking
+TID-407,Missing Message Replay Protection,networking
+TID-408,Unencrypted Sensitive Data Communication,networking
+TID-410,Cryptographic Protocol Side Channel,networking
+TID-411,Weak/Insecure Cryptographic Protocol,networking
+TID-412,Network Routing Capability Abuse,networking
