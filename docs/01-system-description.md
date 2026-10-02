@@ -19,7 +19,7 @@ The full element list, including data flows, data stores and trust boundaries, i
 | ID | Component | Basis | Security-relevant functions |
 |---|---|---|---|
 | CMP-FC | Flight controller | PX4 on NuttX, Pixhawk-standard FMU (A-03) | Flight control and failsafes. Verifies and signs MAVLink. Holds the signing key on its SD card |
-| CMP-CC | Companion computer | Generic ARM64 Linux single-board computer (A-04) | WireGuard endpoint. MAVLink router with allowlist. Onboard autonomy and payload control. Holds the signing key |
+| CMP-CC | Companion computer | Generic ARM64 Linux single-board computer (A-04) | WireGuard endpoint; accepts only WireGuard on its radio interface (SR-001). MAVLink router with allowlist and a custom command filter (DD-04). Onboard autonomy and payload control. Holds the signing key |
 | CMP-PL | EO payload | Generic USB or CSI camera | Produces imagery and video |
 | CMP-NAV | GNSS and compass | Civil GNSS receiver plus magnetometer (A-10) | Position and heading source |
 | CMP-ACT | ESCs and motors | PWM/DShot or DroneCAN | Propulsion |
@@ -39,8 +39,8 @@ The full element list, including data flows, data stores and trust boundaries, i
 
 | Item | Baseline | Note |
 |---|---|---|
-| PX4 | v1.18; analysis against tag `v1.18.0-rc1` | Proposed (DD-06). v1.17.0 has no MAVLink signing |
-| QGroundControl | v5.1.5 | Contains a MAVLink 2 signing implementation (`src/MAVLink/Signing`) [QGC]. Compatibility with PX4 v1.18's signing changes is not yet verified |
+| PX4 | v1.18; analysis against tag `v1.18.0-rc1`, re-pin to `v1.18.0` at release | DD-06. No v1.17 release contains MAVLink signing |
+| QGroundControl | v5.1.5 | Contains a MAVLink 2 signing implementation (`src/MAVLink/Signing`) [QGC]. Compatibility with PX4 v1.18's spec-compliant signing is not yet verified (OI-01; VE-02) |
 | MAVLink | MAVLink 2 only | Signing active in every operational configuration (A-06) |
 | CC operating system | Yocto or Buildroot image | Defined in P4 |
 | mavlink-router | Version pinned in P4 | Message-ID and source filtering [MAVROUTER] |
