@@ -1,6 +1,6 @@
 element_id,name,type,host,source,destination,crosses,interface,description,no_threat_rationale
 CMP-FC,Flight controller,process,,,,,PX4 on NuttX; Pixhawk-standard FMU,"Estimation, flight control, failsafes, mission execution, logging. Verifies and signs MAVLink with the shared signing key.",
-CMP-CC,Companion computer,process,,,,,ARM64 Linux single-board computer,"WireGuard endpoint, MAVLink router with allowlist filter, onboard autonomy and payload control, video encoding. Holds the shared signing key; inside the C2 trust base.",
+CMP-CC,Companion computer,process,,,,,ARM64 Linux single-board computer,"WireGuard endpoint, MAVLink router with allowlist and custom command filter, onboard autonomy and payload control, video encoding. Holds the shared signing key; inside the C2 trust base.",
 CMP-PL,EO payload,process,,,,,USB or CSI camera,Electro-optical camera producing survey imagery and video.,
 CMP-NAV,GNSS and compass module,process,,,,,GNSS receiver plus magnetometer,Civil GNSS position and heading source for the flight controller.,
 CMP-ACT,ESCs and motors,process,,,,,PWM/DShot or DroneCAN,Propulsion actuators driven by the flight controller.,
@@ -22,7 +22,7 @@ DS-GCS-CRED,GCS credentials,data_store,CMP-GCS,,,,Laptop disk,"Copy of the share
 DS-GCS-DATA,GCS mission data,data_store,CMP-GCS,,,,Laptop disk,"Mission plans, telemetry logs and received imagery.",
 DS-MSS-KEYS,MSS key material,data_store,CMP-MSS,,,,Workstation storage,"Master copy of the shared MAVLink signing key, WireGuard key pairs before provisioning, software signing keys (P2, P3).",
 DS-MSS-ART,MSS release artifacts,data_store,CMP-MSS,,,,Workstation storage,"Built and signed images, SBOMs and build provenance (P4); offloaded logs and imagery.",
-DF-01,C2 uplink,data_flow,,CMP-GCS,CMP-CC,TB-04; TB-01,UDP over CMP-RAD-G/CMP-RAD-A; WireGuard; MAVLink 2 signed,"Commands, mission upload and parameter writes. Signed by the GCS end to end to the FC; encrypted GCS to CC.",
+DF-01,C2 uplink,data_flow,,CMP-GCS,CMP-CC,TB-04; TB-01,UDP over CMP-RAD-G/CMP-RAD-A; WireGuard; MAVLink 2 signed,"Commands, mission upload and parameter writes. Encrypted GCS to CC; designed to be signed by the GCS and verified at the FC (OI-01).",
 DF-02,Telemetry downlink,data_flow,,CMP-CC,CMP-GCS,TB-01; TB-04,UDP over CMP-RAD-A/CMP-RAD-G; WireGuard; MAVLink 2 signed,"FC and CC telemetry, status and acknowledgements.",
 DF-03,Video downlink,data_flow,,CMP-CC,CMP-GCS,TB-01; TB-04,UDP over CMP-RAD-A/CMP-RAD-G; WireGuard; RTP,Payload video and imagery previews. Not covered by MAVLink signing; protected by WireGuard only.,
 DF-04,CC to FC commands,data_flow,,CMP-CC,CMP-FC,TB-02,UART (TELEM2); MAVLink 2 signed,"GCS traffic forwarded after the allowlist filter, plus CC-originated autonomy and payload commands signed with the shared key.",

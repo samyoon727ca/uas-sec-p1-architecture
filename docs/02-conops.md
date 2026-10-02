@@ -55,6 +55,6 @@ stateDiagram-v2
 
 ## 2.4 Contingencies
 
-- **Data-link loss.** Jamming, a tunnel failure and a CC failure all appear to the FC as data-link loss, because every C2 path runs through the CC (DD-01). PX4 enters the GCS-loss failsafe when no GCS heartbeat has arrived for `COM_DL_LOSS_T` seconds (default 10). The failsafe then runs `NAV_DLL_ACT`. PX4's default for `NAV_DLL_ACT` is Disabled, so the baseline sets Return (DD-05). GCS heartbeats are accepted unsigned. That makes this failsafe an input to the threat model (§4.2, item 6).
+- **Data-link loss.** Jamming, a tunnel failure and a CC failure all appear to the FC as data-link loss, because every C2 path runs through the CC (DD-01). PX4 enters the GCS-loss failsafe when no GCS heartbeat has arrived for `COM_DL_LOSS_T` seconds (default 10). The failsafe then runs `NAV_DLL_ACT`. PX4's default for `NAV_DLL_ACT` is Disabled, so the baseline sets Return (DD-05). GCS heartbeats are accepted unsigned, so spoofed heartbeats could hold this failsafe off. That is threat THR-001, mitigated by SR-001 and verified by VE-01.
 - **GNSS degradation or spoofing.** PX4's position-loss failsafes apply. Their settings are defined with the requirements.
 - **RC loss.** Not applicable: there is no RC link (A-07). The RC-loss failsafe (`NAV_RCL_ACT`) is out of scope.
