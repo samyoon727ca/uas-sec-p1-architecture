@@ -1,0 +1,5 @@
+flowchart LR
+  GCS("GCS") <-->|"WireGuard<br/>MAVLink signed + video"| R("IP radios<br/>untrusted") <--> CC("Companion computer<br/>allowlist filter")
+  CC <-->|"UART<br/>MAVLink signed"| FC("Flight controller<br/>verifies signature")
+  classDef c2base stroke:#c0392b,stroke-width:3px
+  class GCS,CC,FC c2base
