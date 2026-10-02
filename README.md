@@ -42,6 +42,8 @@ Radio → CC → FC (DD-01). C2 is protected in layers:
 
 The FC–CC boundary uses only signed MAVLink over UART, and uXRCE-DDS is disabled (DD-03), because MAVLink signing doesn't cover DDS.
 
+The design uses 11 of the 14 NIST SP 800-160 Vol. 2 cyber resiliency techniques. Its main gap is Path Diversity: no C2 path bypasses the CC ([§6](docs/06-cyber-resiliency.md), OI-03).
+
 ```mermaid
 flowchart LR
   GCS("GCS") <-->|"WireGuard<br/>MAVLink signed + video"| R("IP radios<br/>untrusted") <--> CC("Companion computer<br/>allowlist filter")
@@ -65,20 +67,21 @@ Traceability is checked automatically on every push. [`tools/validate_trace.py`]
 - an ID is orphaned;
 - an architecture element has no threat analysis;
 - a STRIDE category is applied to an element type it doesn't fit;
-- an EMB3D or ATT&CK for ICS ID is not in the pinned catalog (revoked IDs included);
+- an EMB3D or ATT&CK for ICS ID, or an SP 800-160 resiliency approach, is not in its pinned catalog (revoked IDs included);
+- a requirement is not covered by a verification event with the same method and evidence repo;
 - a generated doc view has drifted from the CSVs.
 
 The column rules are in [`data/README.md`](data/README.md).
 
-Evidence for each requirement will come from the follow-on repos:
+16 verification events cover all 44 requirements ([`docs/08-verification-plan.md`](docs/08-verification-plan.md)). Evidence for each will come from the follow-on repos:
 
-| Repo | Scope | Requirements | Status |
-|---|---|---|---|
-| P2 | Verified boot chain | 3 | Planned |
-| P3 | PKI, key management and signed updates; SITL harness for VE-01 and VE-02 | 13 | Planned |
-| P4 | Hardened CC image, MSS pipeline and supply chain | 14 | Planned |
-| P5 | Hardware and firmware security assessment | 2 | Planned |
-| P6 | RMF-as-code (OSCAL): configuration and procedure evidence | 12 | Planned |
+| Repo | Scope | Requirements | Verification events | Status |
+|---|---|---|---|---|
+| P2 | Verified boot chain | 3 | VE-07, VE-08 | Planned |
+| P3 | PKI, key management and signed updates; SITL harness | 13 | VE-01 to VE-06 | Planned |
+| P4 | Hardened CC image, MSS pipeline and supply chain | 14 | VE-09 to VE-11 | Planned |
+| P5 | Hardware and firmware security assessment | 2 | VE-12, VE-13 | Planned |
+| P6 | RMF-as-code (OSCAL): configuration and procedure evidence | 12 | VE-14 to VE-16 | Planned |
 
 ## Repository map
 
@@ -89,11 +92,11 @@ Evidence for each requirement will come from the follow-on repos:
 | [`docs/03-assumptions.md`](docs/03-assumptions.md) | Labeled assumptions `A-##` | Draft for review |
 | [`docs/04-architecture.md`](docs/04-architecture.md) | Data flows, trust boundaries, C2 trust base, design decisions | Draft for review |
 | [`docs/05-threat-model.md`](docs/05-threat-model.md) | STRIDE per element, EMB3D, ATT&CK for ICS, priority and accepted risks | Draft for review |
-| [`docs/06-cyber-resiliency.md`](docs/06-cyber-resiliency.md) | NIST SP 800-160 Vol. 2 techniques mapped to the design | Planned |
+| [`docs/06-cyber-resiliency.md`](docs/06-cyber-resiliency.md) | NIST SP 800-160 Vol. 2 techniques and approaches mapped to the design; gaps | Draft for review |
 | [`docs/07-requirements.md`](docs/07-requirements.md) | Requirement conventions; full table with parent threats | Draft for review |
-| [`docs/08-verification-plan.md`](docs/08-verification-plan.md) | I/A/D/T methods; VE-01 (heartbeat spoofing test), VE-02 (signed-C2 demo) | Started |
+| [`docs/08-verification-plan.md`](docs/08-verification-plan.md) | 16 verification events covering all requirements; VE-01 and VE-02 in full | Draft for review |
 | [`docs/references.md`](docs/references.md) | Sources, with pinned versions | Draft for review |
-| [`data/`](data/) | Elements, threats, requirements, trace (CSV); pinned framework catalogs | Populated |
+| [`data/`](data/) | Elements, threats, requirements, trace and verification (CSV); pinned framework catalogs | Populated |
 | `model/sysml/` | SysML v2 textual model | Planned |
 | `brief/` | ~10-slide PDR-style brief (Marp) | Planned |
 

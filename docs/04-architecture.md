@@ -185,3 +185,4 @@ sequenceDiagram
 |---|---|---|---|
 | OI-01 | QGroundControl v5.1.5 has a signing implementation, but it has not been shown to work with PX4 v1.18's spec-compliant signing. Until it is, no document claims that signing works end to end | VE-02 passes (P3) | Open |
 | OI-02 | PX4 signing uses one key for every node, so any key-holder compromise is full C2 (§5.5). Options for authenticating each node to the FC have not been evaluated | Trade study in P3 | Open |
+| OI-03 | There is no independent C2 path (SP 800-160 Path Diversity, §6.4). A CC failure ends all C2, and the vehicle relies on the Return failsafe | Trade study in a later P1 revision | Open |

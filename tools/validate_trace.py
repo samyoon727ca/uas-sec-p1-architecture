@@ -3,8 +3,8 @@
 
 Checks schema, ID format and uniqueness, referential integrity, threat
 dispositions, requirement quality, STRIDE-per-element applicability and
-coverage, and that EMB3D and ATT&CK for ICS IDs exist in the pinned catalogs
-under data/catalogs/.
+coverage, verification coverage, and that EMB3D, ATT&CK for ICS and NIST
+SP 800-160 Vol. 2 entries exist in the pinned catalogs under data/catalogs/.
 Exits 1 if any error is found. Standard library only.
 
 Usage:
@@ -29,9 +29,13 @@ SCHEMAS = {
     ],
     "requirements.csv": [
         "req_id", "statement", "rationale", "allocated_to", "verification",
-        "evidence_repo", "resiliency_technique",
+        "evidence_repo", "resiliency_approach",
     ],
     "trace.csv": ["threat_id", "req_id"],
+    "verification.csv": [
+        "ve_id", "title", "method", "evidence_repo", "req_ids", "procedure",
+        "pass_criteria", "status",
+    ],
 }
 
 # Element ID pattern by DFD element type.
@@ -58,10 +62,13 @@ STRIDE_APPLICABLE = {
 CATALOGS = {
     "emb3d": "catalogs/emb3d-v2.0.2.csv",
     "attack_ics": "catalogs/attack-ics-v19.2.csv",
+    # NIST SP 800-160 Vol. 2 Rev. 1, Table D-4: "Technique: Approach".
+    "resiliency": "catalogs/sp800-160v2r1-approaches.csv",
 }
 
 THREAT_ID = re.compile(r"^THR-\d{3}$")
 REQ_ID = re.compile(r"^SR-\d{3}$")
+VE_ID = re.compile(r"^VE-\d{2}$")
 EMB3D_ID = re.compile(r"^TID-\d{3}$")
 ATTACK_ICS_ID = re.compile(r"^T\d{4}(\.\d{3})?$")
 SHALL = re.compile(r"\bshall\b", re.IGNORECASE)
@@ -71,14 +78,7 @@ MISSION_IMPACT = {"MI-1", "MI-2", "MI-3", "MI-4"}
 DISPOSITIONS = {"mitigate", "accept"}
 VERIFICATION = {"I", "A", "D", "T"}  # Inspection, Analysis, Demonstration, Test
 EVIDENCE_REPOS = {"P2", "P3", "P4", "P5", "P6"}
-
-# NIST SP 800-160 Vol. 2 Rev. 1, Table D-2.
-RESILIENCY_TECHNIQUES = {
-    "Adaptive Response", "Analytic Monitoring", "Contextual Awareness",
-    "Coordinated Protection", "Deception", "Diversity", "Dynamic Positioning",
-    "Non-Persistence", "Privilege Restriction", "Realignment", "Redundancy",
-    "Segmentation", "Substantiated Integrity", "Unpredictability",
-}
+VE_STATUS = {"planned", "passed", "failed"}
 
 
 class Report:
@@ -244,7 +244,7 @@ def check_threats(rows: list[dict], elements: dict, catalogs: dict, report: Repo
     return index
 
 
-def check_requirements(rows: list[dict], elements: dict, report: Report) -> dict[str, dict]:
+def check_requirements(rows: list[dict], elements: dict, catalogs: dict, report: Report) -> dict[str, dict]:
     index = index_unique(rows, "req_id", REQ_ID, report)
     for row in index.values():
         where = row["_where"]
@@ -261,9 +261,10 @@ def check_requirements(rows: list[dict], elements: dict, report: Report) -> dict
             report.error(where, f"verification '{row['verification']}' must be one of I,A,D,T")
         if row["evidence_repo"] not in EVIDENCE_REPOS:
             report.error(where, f"evidence_repo '{row['evidence_repo']}' must be one of {sorted(EVIDENCE_REPOS)}")
-        for tech in split_multi(row["resiliency_technique"]):
-            if tech not in RESILIENCY_TECHNIQUES:
-                report.error(where, f"'{tech}' is not an SP 800-160 Vol. 2 Rev. 1 technique")
+        for approach in split_multi(row["resiliency_approach"]):
+            if approach not in catalogs["resiliency"]:
+                report.error(where, f"'{approach}' is not an SP 800-160 Vol. 2 Rev. 1 'Technique: Approach' "
+                                    f"({CATALOGS['resiliency']})")
     return index
 
 
@@ -283,6 +284,39 @@ def check_trace(rows: list[dict], threats: dict, reqs: dict, report: Report) -> 
         elif ok:
             links[(tid, rid)] = where
     return list(links)
+
+
+def check_verification(rows: list[dict], reqs: dict, report: Report) -> dict[str, dict]:
+    """Every requirement must be covered by at least one verification event
+    whose method and evidence repo match the requirement's."""
+    index = index_unique(rows, "ve_id", VE_ID, report)
+    covered: set[str] = set()
+    for row in index.values():
+        where = row["_where"]
+        require(row, ["title", "procedure", "pass_criteria"], report)
+        if row["method"] not in VERIFICATION:
+            report.error(where, f"method '{row['method']}' must be one of I,A,D,T")
+        if row["evidence_repo"] not in EVIDENCE_REPOS:
+            report.error(where, f"evidence_repo '{row['evidence_repo']}' must be one of {sorted(EVIDENCE_REPOS)}")
+        if row["status"] not in VE_STATUS:
+            report.error(where, f"status '{row['status']}' must be one of {sorted(VE_STATUS)}")
+        rids = split_multi(row["req_ids"])
+        if not rids:
+            report.error(where, "'req_ids' is required")
+        for rid in rids:
+            req = reqs.get(rid)
+            if req is None:
+                report.error(where, f"req_id '{rid}' is not a known requirement")
+                continue
+            if req["verification"] != row["method"] or req["evidence_repo"] != row["evidence_repo"]:
+                report.error(where, f"{rid} is {req['verification']}/{req['evidence_repo']} but "
+                                    f"{row['ve_id']} is {row['method']}/{row['evidence_repo']}")
+                continue
+            covered.add(rid)
+    for rid, req in reqs.items():
+        if rid not in covered:
+            report.error(req["_where"], f"{rid} is not covered by a verification event with matching method and evidence repo")
+    return index
 
 
 def check_closure(elements, threats, reqs, links, report: Report, allow_unanalyzed: bool) -> None:
@@ -322,14 +356,15 @@ def validate(data_dir: Path, allow_unanalyzed: bool = False) -> Report:
 
     elements = check_elements(loaded["elements.csv"], report)
     threats = check_threats(loaded["threats.csv"], elements, catalogs, report)
-    reqs = check_requirements(loaded["requirements.csv"], elements, report)
+    reqs = check_requirements(loaded["requirements.csv"], elements, catalogs, report)
     links = check_trace(loaded["trace.csv"], threats, reqs, report)
+    events = check_verification(loaded["verification.csv"], reqs, report)
     check_closure(elements, threats, reqs, links, report, allow_unanalyzed)
 
     report.summary = (
         f"{len(elements)} elements, {len(threats)} threats "
         f"({sum(t['disposition'] == 'accept' for t in threats.values())} accepted), "
-        f"{len(reqs)} requirements, {len(links)} trace links"
+        f"{len(reqs)} requirements, {len(links)} trace links, {len(events)} verification events"
     )
     return report
 

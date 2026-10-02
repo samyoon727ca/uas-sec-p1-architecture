@@ -21,7 +21,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / "data"
 sys.path.insert(0, str(ROOT / "tools"))
-from validate_trace import STRIDE_APPLICABLE, STRIDE_ELEMENT_TYPES  # noqa: E402
+from validate_trace import CATALOGS, STRIDE_APPLICABLE, STRIDE_ELEMENT_TYPES, split_multi  # noqa: E402
 
 TYPE_LABEL = {"process": "Process", "external_entity": "External entity",
               "data_store": "Data store", "data_flow": "Data flow"}
@@ -70,23 +70,73 @@ def threat_matrix() -> str:
     return "\n".join(lines)
 
 
+def verified_by() -> dict[str, list[str]]:
+    out: dict[str, list[str]] = {}
+    for ve in read("verification.csv"):
+        for rid in split_multi(ve["req_ids"]):
+            out.setdefault(rid, []).append(ve["ve_id"])
+    return out
+
+
 def requirements_table() -> str:
     reqs = read("requirements.csv")
     parents: dict[str, list[str]] = {}
     for link in read("trace.csv"):
         parents.setdefault(link["req_id"], []).append(link["threat_id"])
+    ves = verified_by()
     by_repo = Counter(r["evidence_repo"] for r in reqs)
     lines = [
         f"{len(reqs)} requirements. Evidence: "
         + ", ".join(f"{k} {by_repo[k]}" for k in sorted(by_repo)) + ".",
         "",
-        "| ID | Requirement | Allocated to | Method | Evidence | Parent threats |",
-        "|---|---|---|---|---|---|",
+        "| ID | Requirement | Allocated to | Method | Evidence | Verified by | Parent threats |",
+        "|---|---|---|---|---|---|---|",
     ]
     for r in reqs:
         lines.append(
             f"| {r['req_id']} | {cell(r['statement'])} | {r['allocated_to']} | "
-            f"{r['verification']} | {r['evidence_repo']} | {', '.join(sorted(parents.get(r['req_id'], [])))} |"
+            f"{r['verification']} | {r['evidence_repo']} | {', '.join(ves.get(r['req_id'], []))} | "
+            f"{', '.join(sorted(parents.get(r['req_id'], [])))} |"
+        )
+    return "\n".join(lines)
+
+
+def resiliency_approaches() -> str:
+    with (DATA / CATALOGS["resiliency"]).open(newline="", encoding="utf-8-sig") as f:
+        catalog = list(csv.DictReader(f))
+    users: dict[str, list[str]] = {}
+    for r in read("requirements.csv"):
+        for approach in split_multi(r["resiliency_approach"]):
+            users.setdefault(approach, []).append(r["req_id"])
+    techniques = list(dict.fromkeys(row["technique"] for row in catalog))
+    used_tech = [t for t in techniques if any(row["id"] in users for row in catalog if row["technique"] == t)]
+    unused = [t for t in techniques if t not in used_tech]
+    lines = [
+        f"{len(used_tech)} of {len(techniques)} techniques and {len(users)} of {len(catalog)} approaches "
+        f"are used by at least one requirement. Not used: {', '.join(unused) or 'none'}.",
+        "",
+        "| Technique | Approach | Requirements |",
+        "|---|---|---|",
+    ]
+    for row in catalog:
+        if row["id"] in users:
+            lines.append(f"| {row['technique']} | {row['approach']} | {', '.join(users[row['id']])} |")
+    return "\n".join(lines)
+
+
+def verification_events() -> str:
+    events = read("verification.csv")
+    status = Counter(e["status"] for e in events)
+    lines = [
+        f"{len(events)} verification events: " + ", ".join(f"{status[k]} {k}" for k in sorted(status)) + ".",
+        "",
+        "| ID | Event | Method | Evidence | Verifies | Pass criteria |",
+        "|---|---|---|---|---|---|",
+    ]
+    for e in events:
+        lines.append(
+            f"| {e['ve_id']} | {cell(e['title'])} | {e['method']} | {e['evidence_repo']} | "
+            f"{', '.join(split_multi(e['req_ids']))} | {cell(e['pass_criteria'])} |"
         )
     return "\n".join(lines)
 
@@ -94,6 +144,8 @@ def requirements_table() -> str:
 VIEWS = {
     "threat-matrix": (ROOT / "docs/05-threat-model.md", threat_matrix),
     "requirements-table": (ROOT / "docs/07-requirements.md", requirements_table),
+    "resiliency-approaches": (ROOT / "docs/06-cyber-resiliency.md", resiliency_approaches),
+    "verification-events": (ROOT / "docs/08-verification-plan.md", verification_events),
 }
 
 
