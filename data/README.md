@@ -1,6 +1,6 @@
 # Traceability data
 
-These four CSVs are the single source of truth for P1's elements, threats, requirements and trace links. GitHub renders each file as a searchable table. `tools/validate_trace.py` enforces every rule below on each push.
+These four CSVs are the single source of truth for P1's elements, threats, requirements and trace links. The `catalogs/` folder pins the framework IDs they may use. GitHub renders each file as a searchable table. `tools/validate_trace.py` enforces every rule below on each push.
 
 Multi-value cells are semicolon-separated (`TID-201; TID-215`).
 
@@ -28,14 +28,14 @@ One row per element of the [architecture](../docs/04-architecture.md).
 | `threat_id` | Unique, `THR-###` |
 | `title`, `description` | Required |
 | `element_id` | The one STRIDE element the threat applies to |
-| `stride` | One of `S`, `T`, `R`, `I`, `D`, `E` |
-| `emb3d` | Optional. MITRE EMB3D threat IDs, `TID-###` |
-| `attack_ics` | Optional. MITRE ATT&CK for ICS technique IDs, `T####` |
+| `stride` | One of `S`, `T`, `R`, `I`, `D`, `E`, and applicable to the element's type: processes all six, external entities `S` and `R`, data stores and data flows `T`, `I` and `D` (Microsoft's STRIDE-per-element chart) |
+| `emb3d` | Optional. MITRE EMB3D threat IDs, `TID-###`, present in `catalogs/emb3d-v2.0.2.csv` |
+| `attack_ics` | Optional. MITRE ATT&CK for ICS technique IDs, `T####` or `T####.###`, present in `catalogs/attack-ics-v19.2.csv` |
 | `mission_impact` | `MI-1` to `MI-4` (scale below) |
 | `disposition` | `mitigate` (at least one requirement traces to it) or `accept` |
 | `acceptance_rationale` | Required for `accept`; empty for `mitigate` |
 
-The validator checks EMB3D and ATT&CK IDs for format only. Their existence is checked by hand against the pinned versions in [references](../docs/references.md).
+The validator checks every EMB3D and ATT&CK ID against the pinned catalogs in [`catalogs/`](catalogs/), so a revoked or mistyped ID fails the build.
 
 **Mission-impact scale.** This scale is project-defined (assumption A-13), not taken from a standard.
 
@@ -74,4 +74,5 @@ Every requirement needs at least one parent threat. Duplicate pairs are rejected
 ```sh
 python -m unittest discover -s tests   # validator self-tests
 python tools/validate_trace.py         # validate data/
+python tools/render_views.py           # regenerate doc views (--check in CI)
 ```

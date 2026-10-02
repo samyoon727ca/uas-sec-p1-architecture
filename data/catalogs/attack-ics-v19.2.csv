@@ -1,0 +1,98 @@
+id,name,tactics
+T0800,Activate Firmware Update Mode,inhibit-response-function
+T0801,Monitor Process State,collection
+T0802,Automated Collection,collection
+T0806,Brute Force I/O,impair-process-control
+T0807,Command-Line Interface,execution
+T0809,Data Destruction,inhibit-response-function
+T0811,Data from Information Repositories,collection
+T0813,Denial of Control,impact
+T0814,Denial of Service,inhibit-response-function
+T0815,Denial of View,impact
+T0816,Device Restart/Shutdown,inhibit-response-function
+T0817,Drive-by Compromise,initial-access
+T0819,Exploit Public-Facing Application,initial-access
+T0820,Exploitation for Evasion,evasion
+T0821,Modify Controller Tasking,execution
+T0822,External Remote Services,initial-access
+T0823,Graphical User Interface,execution
+T0826,Loss of Availability,impact
+T0827,Loss of Control,impact
+T0828,Loss of Productivity and Revenue,impact
+T0829,Loss of View,impact
+T0830,Adversary-in-the-Middle,collection
+T0831,Manipulation of Control,impact
+T0832,Manipulation of View,impact
+T0834,Native API,execution
+T0835,Manipulate I/O Image,inhibit-response-function
+T0836,Modify Parameter,impair-process-control
+T0837,Loss of Protection,impact
+T0838,Modify Alarm Settings,inhibit-response-function
+T0840,Network Connection Enumeration,discovery
+T0842,Network Sniffing,discovery
+T0843,Program Download,lateral-movement
+T0843.001,Download All,lateral-movement
+T0843.002,Online Edit,lateral-movement
+T0843.003,Program Append,lateral-movement
+T0845,Program Upload,collection
+T0846,Remote System Discovery,discovery
+T0846.001,Port Scan,discovery
+T0846.002,Broadcast Discovery,discovery
+T0846.003,Multicast Discovery,discovery
+T0847,Replication Through Removable Media,initial-access
+T0848,Rogue Master,initial-access
+T0849,Masquerading,evasion
+T0851,Rootkit,evasion;inhibit-response-function
+T0852,Screen Capture,collection
+T0853,Scripting,execution
+T0858,Change Operating Mode,execution;evasion
+T0859,Valid Accounts,persistence;lateral-movement
+T0860,Wireless Compromise,initial-access
+T0861,Point & Tag Identification,collection
+T0862,Supply Chain Compromise,initial-access
+T0863,User Execution,execution
+T0864,Transient Cyber Asset,initial-access
+T0865,Spearphishing Attachment,initial-access
+T0866,Exploitation of Remote Services,initial-access;lateral-movement
+T0867,Lateral Tool Transfer,lateral-movement
+T0868,Detect Operating Mode,collection
+T0869,Standard Application Layer Protocol,command-and-control
+T0871,Execution through API,execution
+T0872,Indicator Removal on Host,evasion
+T0873,Project File Infection,persistence
+T0873.001,Siemens Project File Format,persistence
+T0874,Hooking,execution;privilege-escalation
+T0877,I/O Image,collection
+T0878,Alarm Suppression,inhibit-response-function
+T0879,Damage to Property,impact
+T0880,Loss of Safety,impact
+T0881,Service Stop,inhibit-response-function
+T0882,Theft of Operational Information,impact
+T0883,Internet Accessible Device,initial-access
+T0884,Connection Proxy,command-and-control
+T0885,Commonly Used Port,command-and-control
+T0886,Remote Services,initial-access;lateral-movement
+T0887,Wireless Sniffing,discovery;collection
+T0888,Remote System Information Discovery,discovery
+T0889,Modify Program,persistence
+T0890,Exploitation for Privilege Escalation,privilege-escalation
+T0892,Change Credential,inhibit-response-function
+T0893,Data from Local System,collection
+T0894,System Binary Proxy Execution,evasion
+T0895,Autorun Image,execution
+T1691,Block Operational Technology Message,inhibit-response-function
+T1691.001,Command Message,inhibit-response-function
+T1691.002,Reporting Message,inhibit-response-function
+T1692,Unauthorized Message,evasion;impair-process-control
+T1692.001,Command Message,evasion;impair-process-control
+T1692.002,Reporting Message,evasion;impair-process-control
+T1693,Modify Firmware,persistence;inhibit-response-function;impair-process-control
+T1693.001,System Firmware,persistence;inhibit-response-function;impair-process-control
+T1693.002,Module Firmware,persistence;inhibit-response-function;impair-process-control
+T1694,Insecure Credentials,persistence;lateral-movement
+T1694.001,Default Credentials,persistence;lateral-movement
+T1694.002,Hardcoded Credentials,persistence;lateral-movement
+T1695,Block Communications,inhibit-response-function
+T1695.001,Serial COM,inhibit-response-function
+T1695.002,Ethernet,inhibit-response-function
+T1695.003,Wi-Fi,inhibit-response-function

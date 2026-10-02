@@ -63,14 +63,31 @@ def baseline():
     }
 
 
+# Small stand-ins for the pinned catalogs. T0855 is deliberately absent:
+# it is revoked in ATT&CK for ICS v19.2.
+TEST_CATALOGS = {
+    "emb3d": ["TID-201", "TID-202"],
+    "attack_ics": ["T0836", "T1692.001"],
+}
+
+
+def write_catalogs(root: Path, catalogs=TEST_CATALOGS):
+    for key, ids in catalogs.items():
+        path = root / vt.CATALOGS[key]
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("id,name\n" + "".join(f"{i},x\n" for i in ids))
+
+
 class ValidatorTest(unittest.TestCase):
-    def run_validator(self, data, allow_unanalyzed=False):
+    def run_validator(self, data, allow_unanalyzed=False, catalogs=TEST_CATALOGS):
         with tempfile.TemporaryDirectory() as tmp:
             for name, rows in data.items():
                 with open(Path(tmp) / name, "w", newline="", encoding="utf-8") as f:
                     writer = csv.DictWriter(f, fieldnames=vt.SCHEMAS[name])
                     writer.writeheader()
                     writer.writerows(rows)
+            if catalogs is not None:
+                write_catalogs(Path(tmp), catalogs)
             return vt.validate(Path(tmp), allow_unanalyzed)
 
     def assertError(self, data, fragment, **kw):
@@ -93,6 +110,7 @@ class ValidatorTest(unittest.TestCase):
             for name, cols in vt.SCHEMAS.items():
                 (Path(tmp) / name).write_text(",".join(cols) + "\n")
             (Path(tmp) / "trace.csv").write_text("threat,requirement\n")
+            write_catalogs(Path(tmp))
             report = vt.validate(Path(tmp))
         self.assertTrue(any("header must be exactly" in e for e in report.errors))
 
@@ -150,6 +168,30 @@ class ValidatorTest(unittest.TestCase):
         data["threats.csv"][1].update(emb3d="TID-1", attack_ics="T836")
         self.assertError(data, "malformed EMB3D ID 'TID-1'")
         self.assertError(data, "malformed ATT&CK for ICS ID 'T836'")
+
+    def test_framework_ids_must_exist_in_pinned_catalogs(self):
+        data = baseline()
+        data["threats.csv"][1].update(emb3d="TID-999", attack_ics="T0855")
+        self.assertError(data, "EMB3D ID 'TID-999' is not in the pinned catalog")
+        self.assertError(data, "ATT&CK for ICS ID 'T0855' is not in the pinned catalog")
+
+    def test_missing_catalog_is_an_error(self):
+        report = self.run_validator(baseline(), catalogs=None)
+        self.assertTrue(any("catalog file not found" in e for e in report.errors))
+
+    def test_stride_must_apply_to_element_type(self):
+        data = baseline()
+        data["threats.csv"][0]["stride"] = "S"          # DF-01 is a data flow
+        self.assertError(data, "stride 'S' does not apply to data_flow elements (allowed: T,I,D)")
+        data = baseline()
+        data["threats.csv"][3]["stride"] = "R"          # DS-FC-KEY is a data store
+        self.assertError(data, "stride 'R' does not apply to data_store elements")
+
+    def test_external_entity_allows_spoofing_and_repudiation_only(self):
+        data = baseline()
+        data["elements.csv"][2]["no_threat_rationale"] = ""
+        data["threats.csv"].append(threat("THR-005", "EE-OP", stride="T"))
+        self.assertError(data, "stride 'T' does not apply to external_entity elements (allowed: S,R)")
 
     def test_mitigated_threat_without_requirement(self):
         data = baseline()
