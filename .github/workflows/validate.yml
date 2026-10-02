@@ -21,4 +21,6 @@ jobs:
       - name: Unit-test the validator
         run: python -m unittest discover -s tests -v
       - name: Validate traceability data
-        run: python tools/validate_trace.py
+        # --allow-unanalyzed: elements exist but the threat model does not yet.
+        # Remove this flag in the threat-model PR so coverage gaps fail the build.
+        run: python tools/validate_trace.py --allow-unanalyzed
