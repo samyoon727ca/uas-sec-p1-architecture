@@ -1,0 +1,10 @@
+{
+  "name": "p1-pdr-brief",
+  "private": true,
+  "description": "Build toolchain for the P1 PDR-style brief (exact versions; see package-lock.json).",
+  "devDependencies": {
+    "@marp-team/marp-cli": "4.5.1",
+    "@mermaid-js/mermaid-cli": "12.0.0",
+    "puppeteer": "25.12.0"
+  }
+}

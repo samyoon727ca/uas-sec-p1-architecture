@@ -10,6 +10,7 @@ permissions:
 jobs:
   traceability:
     runs-on: ubuntu-24.04
+    timeout-minutes: 5
     steps:
       # Actions are pinned to full commit SHAs; the tag is noted for review.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -30,6 +31,7 @@ jobs:
   sysml:
     # Validates model/sysml with the OMG SysML v2 Pilot Implementation.
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -45,3 +47,26 @@ jobs:
           key: sysml-pilot-${{ hashFiles('tools/sysml/validate.sh') }}
       - name: Validate SysML v2 model
         run: tools/sysml/validate.sh
+
+  brief:
+    # Builds the PDR brief PDF with the toolchain pinned in brief/package-lock.json.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+      - name: Build the PDR brief
+        env:
+          CHROME_NO_SANDBOX: "1"
+        run: CHROME_PATH="$(command -v google-chrome)" brief/build.sh
+      - name: Check the brief's diagram sources match the docs
+        run: git diff --exit-code -- 'brief/assets/*.mmd'
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: pdr-brief
+          path: brief/pdr-brief.pdf
+          if-no-files-found: error
