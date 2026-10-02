@@ -1,6 +1,6 @@
 # 8. Verification plan
 
-> Status: started. Two verification events are defined. The rest follow the requirements.
+> Status: started. Two verification events are defined, covering SR-001, SR-003, SR-004 and SR-025. Events for the other 40 requirements are defined in the verification session.
 
 Each requirement in [`data/requirements.csv`](../data/requirements.csv) names a verification method and the repo that produces the evidence:
 
@@ -19,8 +19,8 @@ The verification events below define how that evidence is produced.
 
 | ID | Verifies | Method | Evidence repo | Status |
 |---|---|---|---|---|
-| VE-01 | SR-001 (THR-001) | T | P3 | Planned |
-| VE-02 | OI-01: signed C2 with the pinned versions. Later, the signing requirements | D | P3 | Planned |
+| VE-01 | SR-001 (THR-001), SR-004 (THR-009, THR-044) | T | P3 | Planned |
+| VE-02 | SR-003 (THR-042, THR-049, THR-064), SR-025 (THR-027, THR-045, THR-057); characterizes THR-065; closes OI-01 | D | P3 | Planned |
 
 ### VE-01: spoofed GCS heartbeats do not suppress the data-link-loss failsafe
 
@@ -57,10 +57,14 @@ The verification events below define how that evidence is produced.
 3. Upload a mission, change a parameter, arm, and fly.
 4. Send the same command from the keyless client.
 5. Send the same command from the wrong-key client.
+6. Disarm, delete the key file from the SITL storage, and reboot the FC. This simulates removal from the SD card (THR-027).
+7. **Replay characterization (THR-065).** Restore the key and record a signed command. Stop the FC without a graceful shutdown, restart it, and replay the recorded frame.
 
 **Pass criteria:**
 - Commands signed by QGroundControl are accepted and executed.
 - Telemetry from the FC is signed.
 - Unsigned and wrongly signed commands are rejected and have no effect.
+- After step 6, QGroundControl alerts the operator that FC telemetry is unsigned (SR-025).
+- Step 7 is a measurement, not a pass/fail check. Its result updates THR-065: if the replayed frame is rejected, the assumption is retired; if it is accepted, the threat stands and a requirement is added.
 
 **Until this passes,** documents describe GCS-to-FC signing as design intent only, not as working (OI-01).
