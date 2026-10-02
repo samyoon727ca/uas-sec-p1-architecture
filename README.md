@@ -6,6 +6,8 @@ This repo is the security architecture, threat model and derived requirements fo
 
 > **Notional and unclassified.** Built only from public sources: PX4 and MAVLink documentation, NIST, MITRE. It is not based on any real program or system. Assumptions are labeled as assumptions.
 
+**Five-minute version:** the 11-slide PDR-style brief, as [PDF](brief/pdr-brief.pdf) or [Markdown](brief/pdr-brief.md).
+
 ## Threat
 
 65 threats, analyzed STRIDE per element across all 40 data-flow-diagram elements and mapped to MITRE EMB3D v2.0.2 and ATT&CK for ICS v19.2. Mission-impact ratings: 41 MI-1, 16 MI-2, 6 MI-3, 2 MI-4. 62 are mitigated and 3 accepted with rationale.
@@ -99,7 +101,7 @@ The column rules are in [`data/README.md`](data/README.md).
 | [`docs/references.md`](docs/references.md) | Sources, with pinned versions | Draft for review |
 | [`data/`](data/) | Elements, threats, requirements, trace and verification (CSV); pinned framework catalogs | Populated |
 | [`model/sysml/`](model/sysml/) | SysML v2 model: hand-written architecture, plus threats, requirements and verification generated from the CSVs; validated on the OMG Pilot Implementation | Draft for review |
-| `brief/` | ~10-slide PDR-style brief (Marp) | Planned |
+| [`brief/`](brief/) | 11-slide PDR-style brief (Marp source and PDF). Diagrams are rendered from the docs; the PDF is built in CI with a pinned toolchain | Draft for review |
 
 ## Run the checks locally
 
@@ -109,6 +111,7 @@ python tools/validate_trace.py
 python tools/render_views.py --check
 python tools/gen_sysml.py --check
 tools/sysml/validate.sh   # Java 21+; downloads the pinned SysML v2 Pilot Implementation once
+CHROME_PATH=/path/to/chrome brief/build.sh   # Node 22+; rebuilds brief/pdr-brief.pdf
 ```
 
 Python 3.11+. Standard library only.
