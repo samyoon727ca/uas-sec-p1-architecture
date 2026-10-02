@@ -18,11 +18,17 @@ _Status: architecture complete; STRIDE-per-element analysis next._
 - the four message types PX4 accepts unsigned;
 - GCS-loss detection that relies on unsigned heartbeats.
 
+The last input is already a named threat. **THR-001** (MI-1): spoofed GCS heartbeats suppress the data-link-loss failsafe while the real link is down. It is mitigated by SR-001; the residual risk is a compromised CC or GCS.
+
 See [§4.2](docs/04-architecture.md#42-c2-trust-base) and [`docs/05-threat-model.md`](docs/05-threat-model.md).
 
 ## Requirements
 
-_Status: planned._ Each "shall" requirement will trace to a parent threat, be allocated to one component, and name a verification method and evidence repo. See [`data/requirements.csv`](data/requirements.csv).
+_Status: one seeded; the rest follow the threat model._ Each "shall" requirement traces to a parent threat, is allocated to one component, and names a verification method and an evidence repo.
+
+**SR-001** (CMP-CC): the CC shall discard all traffic on its radio interface except WireGuard traffic from the provisioned GCS peer. Method: Test (VE-01). Evidence: P3.
+
+See [`data/requirements.csv`](data/requirements.csv).
 
 ## Design
 
@@ -30,7 +36,7 @@ Radio → CC → FC (DD-01). C2 is protected in layers:
 
 1. **WireGuard tunnel, GCS to CC (DD-02).** Carries MAVLink and video, and provides confidentiality across the untrusted RF link.
 2. **CC allowlist (DD-04).** Filters MAVLink messages and commands. It is defense in depth, not an authentication point.
-3. **MAVLink signing.** Verified at the FC, end to end from the GCS.
+3. **MAVLink signing, GCS to FC.** This is design intent. It is not yet demonstrated with the pinned QGroundControl and PX4 versions (open item OI-01, closed by VE-02).
 
 The FC–CC boundary uses only signed MAVLink over UART, and uXRCE-DDS is disabled (DD-03), because MAVLink signing doesn't cover DDS.
 
@@ -66,7 +72,7 @@ Evidence for each requirement will come from the follow-on repos:
 | Repo | Scope | Status |
 |---|---|---|
 | P2 | Verified boot chain | Planned |
-| P3 | PKI, key management and signed updates | Planned |
+| P3 | PKI, key management and signed updates; SITL harness for VE-01 and VE-02 | Planned |
 | P4 | Hardened embedded Linux and supply-chain pipeline | Planned |
 | P5 | Hardware and firmware security assessment | Planned |
 | P6 | RMF-as-code (OSCAL) | Planned |
@@ -82,9 +88,9 @@ Evidence for each requirement will come from the follow-on repos:
 | [`docs/05-threat-model.md`](docs/05-threat-model.md) | STRIDE per element, EMB3D, ATT&CK for ICS | Planned |
 | [`docs/06-cyber-resiliency.md`](docs/06-cyber-resiliency.md) | NIST SP 800-160 Vol. 2 techniques mapped to the design | Planned |
 | [`docs/07-requirements.md`](docs/07-requirements.md) | Requirement conventions | Planned |
-| [`docs/08-verification-plan.md`](docs/08-verification-plan.md) | I/A/D/T methods and the evidence map | Planned |
+| [`docs/08-verification-plan.md`](docs/08-verification-plan.md) | I/A/D/T methods; VE-01 (heartbeat spoofing test), VE-02 (signed-C2 demo) | Started |
 | [`docs/references.md`](docs/references.md) | Sources, with pinned versions | Draft for review |
-| [`data/`](data/) | Elements, threats, requirements, trace (CSV) | Elements populated |
+| [`data/`](data/) | Elements, threats, requirements, trace (CSV) | Elements populated; THR-001 and SR-001 seeded |
 | `model/sysml/` | SysML v2 textual model | Planned |
 | `brief/` | ~10-slide PDR-style brief (Marp) | Planned |
 
