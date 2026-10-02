@@ -24,3 +24,24 @@ jobs:
         run: python tools/validate_trace.py
       - name: Check generated doc views are current
         run: python tools/render_views.py --check
+      - name: Check generated SysML model is current
+        run: python tools/gen_sysml.py --check
+
+  sysml:
+    # Validates model/sysml with the OMG SysML v2 Pilot Implementation.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .cache/sysml
+          # Key on the script, which pins the release, version and SHA-256.
+          key: sysml-pilot-${{ hashFiles('tools/sysml/validate.sh') }}
+      - name: Validate SysML v2 model
+        run: tools/sysml/validate.sh

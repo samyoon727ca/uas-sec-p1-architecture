@@ -69,7 +69,8 @@ Traceability is checked automatically on every push. [`tools/validate_trace.py`]
 - a STRIDE category is applied to an element type it doesn't fit;
 - an EMB3D or ATT&CK for ICS ID, or an SP 800-160 resiliency approach, is not in its pinned catalog (revoked IDs included);
 - a requirement is not covered by a verification event with the same method and evidence repo;
-- a generated doc view has drifted from the CSVs.
+- a generated doc view or the generated SysML model has drifted from the CSVs;
+- the SysML v2 model fails validation on the OMG Pilot Implementation.
 
 The column rules are in [`data/README.md`](data/README.md).
 
@@ -97,7 +98,7 @@ The column rules are in [`data/README.md`](data/README.md).
 | [`docs/08-verification-plan.md`](docs/08-verification-plan.md) | 16 verification events covering all requirements; VE-01 and VE-02 in full | Draft for review |
 | [`docs/references.md`](docs/references.md) | Sources, with pinned versions | Draft for review |
 | [`data/`](data/) | Elements, threats, requirements, trace and verification (CSV); pinned framework catalogs | Populated |
-| `model/sysml/` | SysML v2 textual model | Planned |
+| [`model/sysml/`](model/sysml/) | SysML v2 model: hand-written architecture, plus threats, requirements and verification generated from the CSVs; validated on the OMG Pilot Implementation | Draft for review |
 | `brief/` | ~10-slide PDR-style brief (Marp) | Planned |
 
 ## Run the checks locally
@@ -106,6 +107,8 @@ The column rules are in [`data/README.md`](data/README.md).
 python -m unittest discover -s tests
 python tools/validate_trace.py
 python tools/render_views.py --check
+python tools/gen_sysml.py --check
+tools/sysml/validate.sh   # Java 21+; downloads the pinned SysML v2 Pilot Implementation once
 ```
 
 Python 3.11+. Standard library only.
