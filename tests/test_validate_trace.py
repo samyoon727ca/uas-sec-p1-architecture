@@ -33,6 +33,13 @@ def req(rid, alloc="CMP-FC", **kw):
     return row
 
 
+def event(veid, req_ids, **kw):
+    row = {c: "" for c in vt.SCHEMAS["verification.csv"]}
+    row.update(ve_id=veid, title="t", req_ids=req_ids, procedure="p", pass_criteria="c", status="planned")
+    row.update(kw)
+    return row
+
+
 def baseline():
     """A small, fully valid data set."""
     return {
@@ -52,13 +59,17 @@ def baseline():
                    acceptance_rationale="Physical access is mitigated operationally"),
         ],
         "requirements.csv": [
-            req("SR-001", resiliency_technique="Substantiated Integrity"),
+            req("SR-001", resiliency_approach="Substantiated Integrity: Integrity Checks"),
             req("SR-002", alloc="CMP-GCS", verification="I", evidence_repo="P6"),
         ],
         "trace.csv": [
             {"threat_id": "THR-001", "req_id": "SR-001"},
             {"threat_id": "THR-002", "req_id": "SR-001"},
             {"threat_id": "THR-003", "req_id": "SR-002"},
+        ],
+        "verification.csv": [
+            event("VE-01", "SR-001", method="T", evidence_repo="P2"),
+            event("VE-02", "SR-002", method="I", evidence_repo="P6"),
         ],
     }
 
@@ -68,6 +79,7 @@ def baseline():
 TEST_CATALOGS = {
     "emb3d": ["TID-201", "TID-202"],
     "attack_ics": ["T0836", "T1692.001"],
+    "resiliency": ["Substantiated Integrity: Integrity Checks"],
 }
 
 
@@ -233,10 +245,39 @@ class ValidatorTest(unittest.TestCase):
         self.assertError(data, "verification 'X'")
         self.assertError(data, "evidence_repo 'P1'")
 
-    def test_unknown_resiliency_technique(self):
+    def test_unknown_resiliency_approach(self):
         data = baseline()
-        data["requirements.csv"][0]["resiliency_technique"] = "Hardening"
-        self.assertError(data, "'Hardening' is not an SP 800-160 Vol. 2 Rev. 1 technique")
+        data["requirements.csv"][0]["resiliency_approach"] = "Substantiated Integrity: Hardening"
+        self.assertError(data, "'Substantiated Integrity: Hardening' is not an SP 800-160 Vol. 2 Rev. 1 'Technique: Approach'")
+
+    # --- verification coverage ------------------------------------------
+    def test_requirement_without_verification_event(self):
+        data = baseline()
+        data["verification.csv"] = data["verification.csv"][:1]
+        self.assertError(data, "SR-002 is not covered by a verification event")
+
+    def test_verification_method_must_match_requirement(self):
+        data = baseline()
+        data["verification.csv"][1]["method"] = "T"
+        self.assertError(data, "SR-002 is I/P6 but VE-02 is T/P6")
+
+    def test_verification_repo_must_match_requirement(self):
+        data = baseline()
+        data["verification.csv"][0]["evidence_repo"] = "P3"
+        self.assertError(data, "SR-001 is T/P2 but VE-01 is T/P3")
+
+    def test_verification_event_references_unknown_requirement(self):
+        data = baseline()
+        data["verification.csv"][0]["req_ids"] = "SR-001; SR-099"
+        self.assertError(data, "req_id 'SR-099' is not a known requirement")
+
+    def test_verification_event_fields(self):
+        data = baseline()
+        data["verification.csv"][0].update(ve_id="VE-1", status="done")
+        self.assertError(data, "malformed ve_id 'VE-1'")
+        data = baseline()
+        data["verification.csv"][0]["status"] = "done"
+        self.assertError(data, "status 'done' must be one of")
 
     # --- trace ----------------------------------------------------------
     def test_trace_to_unknown_ids(self):

@@ -1,6 +1,6 @@
 # Traceability data
 
-These four CSVs are the single source of truth for P1's elements, threats, requirements and trace links. The `catalogs/` folder pins the framework IDs they may use. GitHub renders each file as a searchable table. `tools/validate_trace.py` enforces every rule below on each push.
+These five CSVs are the single source of truth for P1's elements, threats, requirements, trace links and verification events. The `catalogs/` folder pins the framework IDs they may use. GitHub renders each file as a searchable table. `tools/validate_trace.py` enforces every rule below on each push.
 
 Multi-value cells are semicolon-separated (`TID-201; TID-215`).
 
@@ -56,7 +56,7 @@ The validator checks every EMB3D and ATT&CK ID against the pinned catalogs in [`
 | `allocated_to` | One `CMP-*` component |
 | `verification` | `I` Inspection, `A` Analysis, `D` Demonstration, `T` Test |
 | `evidence_repo` | `P2` to `P6`: the repo that will produce the verification evidence |
-| `resiliency_technique` | Optional. One or more of the 14 techniques in NIST SP 800-160 Vol. 2 Rev. 1, Table D-2 |
+| `resiliency_approach` | Optional. One or more NIST SP 800-160 Vol. 2 Rev. 1 `Technique: Approach` pairs, present in `catalogs/sp800-160v2r1-approaches.csv` |
 
 Parent threats are not stored here. They live only in `trace.csv`, so the two can't drift apart.
 
@@ -68,6 +68,19 @@ Parent threats are not stored here. They live only in `trace.csv`, so the two ca
 | `req_id` | A known requirement |
 
 Every requirement needs at least one parent threat. Duplicate pairs are rejected.
+
+## `verification.csv`
+
+| Column | Rule |
+|---|---|
+| `ve_id` | Unique, `VE-##` |
+| `title`, `procedure`, `pass_criteria` | Required |
+| `method` | `I`, `A`, `D` or `T` |
+| `evidence_repo` | `P2` to `P6` |
+| `req_ids` | One or more known requirements. Each must have the same method and evidence repo as the event |
+| `status` | `planned`, `passed` or `failed` |
+
+Every requirement must be covered by at least one event whose method and evidence repo match its own.
 
 ## Running locally
 

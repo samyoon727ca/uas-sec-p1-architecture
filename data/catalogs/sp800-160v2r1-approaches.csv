@@ -1,0 +1,51 @@
+id,technique,approach
+Adaptive Response: Dynamic Reconfiguration,Adaptive Response,Dynamic Reconfiguration
+Adaptive Response: Dynamic Resource Allocation,Adaptive Response,Dynamic Resource Allocation
+Adaptive Response: Adaptive Management,Adaptive Response,Adaptive Management
+Analytic Monitoring: Monitoring and Damage Assessment,Analytic Monitoring,Monitoring and Damage Assessment
+Analytic Monitoring: Sensor Fusion and Analysis,Analytic Monitoring,Sensor Fusion and Analysis
+Analytic Monitoring: Forensic and Behavioral Analysis,Analytic Monitoring,Forensic and Behavioral Analysis
+Contextual Awareness: Dynamic Resource Awareness,Contextual Awareness,Dynamic Resource Awareness
+Contextual Awareness: Dynamic Threat Awareness,Contextual Awareness,Dynamic Threat Awareness
+Contextual Awareness: Mission Dependency and Status Visualization,Contextual Awareness,Mission Dependency and Status Visualization
+Coordinated Protection: Calibrated Defense-in-Depth,Coordinated Protection,Calibrated Defense-in-Depth
+Coordinated Protection: Consistency Analysis,Coordinated Protection,Consistency Analysis
+Coordinated Protection: Orchestration,Coordinated Protection,Orchestration
+Coordinated Protection: Self-Challenge,Coordinated Protection,Self-Challenge
+Deception: Obfuscation,Deception,Obfuscation
+Deception: Disinformation,Deception,Disinformation
+Deception: Misdirection,Deception,Misdirection
+Deception: Tainting,Deception,Tainting
+Diversity: Architectural Diversity,Diversity,Architectural Diversity
+Diversity: Design Diversity,Diversity,Design Diversity
+Diversity: Synthetic Diversity,Diversity,Synthetic Diversity
+Diversity: Information Diversity,Diversity,Information Diversity
+Diversity: Path Diversity,Diversity,Path Diversity
+Diversity: Supply Chain Diversity,Diversity,Supply Chain Diversity
+Dynamic Positioning: Functional Relocation of Sensors,Dynamic Positioning,Functional Relocation of Sensors
+Dynamic Positioning: Functional Relocation of Cyber Resources,Dynamic Positioning,Functional Relocation of Cyber Resources
+Dynamic Positioning: Asset Mobility,Dynamic Positioning,Asset Mobility
+Dynamic Positioning: Fragmentation,Dynamic Positioning,Fragmentation
+Dynamic Positioning: Distributed Functionality,Dynamic Positioning,Distributed Functionality
+Non-Persistence: Non-Persistent Information,Non-Persistence,Non-Persistent Information
+Non-Persistence: Non-Persistent Services,Non-Persistence,Non-Persistent Services
+Non-Persistence: Non-Persistent Connectivity,Non-Persistence,Non-Persistent Connectivity
+Privilege Restriction: Trust-Based Privilege Management,Privilege Restriction,Trust-Based Privilege Management
+Privilege Restriction: Attribute-Based Usage Restriction,Privilege Restriction,Attribute-Based Usage Restriction
+Privilege Restriction: Dynamic Privileges,Privilege Restriction,Dynamic Privileges
+Realignment: Purposing,Realignment,Purposing
+Realignment: Offloading,Realignment,Offloading
+Realignment: Restriction,Realignment,Restriction
+Realignment: Replacement,Realignment,Replacement
+Realignment: Specialization,Realignment,Specialization
+Realignment: Evolvability,Realignment,Evolvability
+Redundancy: Protected Backup and Restore,Redundancy,Protected Backup and Restore
+Redundancy: Surplus Capacity,Redundancy,Surplus Capacity
+Redundancy: Replication,Redundancy,Replication
+Segmentation: Predefined Segmentation,Segmentation,Predefined Segmentation
+Segmentation: Dynamic Segmentation and Isolation,Segmentation,Dynamic Segmentation and Isolation
+Substantiated Integrity: Integrity Checks,Substantiated Integrity,Integrity Checks
+Substantiated Integrity: Provenance Tracking,Substantiated Integrity,Provenance Tracking
+Substantiated Integrity: Behavior Validation,Substantiated Integrity,Behavior Validation
+Unpredictability: Temporal Unpredictability,Unpredictability,Temporal Unpredictability
+Unpredictability: Contextual Unpredictability,Unpredictability,Contextual Unpredictability
