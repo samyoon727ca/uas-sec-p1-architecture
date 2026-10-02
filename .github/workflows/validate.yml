@@ -10,6 +10,7 @@ permissions:
 jobs:
   traceability:
     runs-on: ubuntu-24.04
+    timeout-minutes: 5
     steps:
       # Actions are pinned to full commit SHAs; the tag is noted for review.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -30,6 +31,7 @@ jobs:
   sysml:
     # Validates model/sysml with the OMG SysML v2 Pilot Implementation.
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -49,6 +51,7 @@ jobs:
   brief:
     # Builds the PDR brief PDF with the toolchain pinned in brief/package-lock.json.
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
