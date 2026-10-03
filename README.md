@@ -8,6 +8,17 @@ This repo is the security architecture, threat model and derived requirements fo
 
 **Five-minute version:** the 11-slide PDR-style brief, as [PDF](brief/pdr-brief.pdf) or [Markdown](brief/pdr-brief.md).
 
+**Status: baseline 1.0, complete (October 2026).**
+
+All P1 deliverables are in place and checked in CI: architecture, threat model, resiliency mapping, requirements, verification plan, SysML v2 model and brief. Still open, each tracked to its owner:
+
+- **OI-01:** QGroundControl and PX4 signing interoperability. Closed by VE-02 in P3.
+- **OI-02:** per-node authentication to the FC. Trade study in P3.
+- **OI-03:** no independent C2 path. Deferred to a later P1 revision.
+- **DD-06:** re-pin from PX4 `v1.18.0-rc1` to `v1.18.0` once PX4 releases it.
+
+All 16 verification events are planned; their results arrive as P2–P6 produce evidence.
+
 ## Threat
 
 65 threats, analyzed STRIDE per element across all 40 data-flow-diagram elements and mapped to MITRE EMB3D v2.0.2 and ATT&CK for ICS v19.2. Mission-impact ratings: 41 MI-1, 16 MI-2, 6 MI-3, 2 MI-4. 62 are mitigated and 3 accepted with rationale.
@@ -90,18 +101,18 @@ The column rules are in [`data/README.md`](data/README.md).
 
 | Path | Contents | Status |
 |---|---|---|
-| [`docs/01-system-description.md`](docs/01-system-description.md) | Purpose, scope, components, key material, software baseline | Draft for review |
-| [`docs/02-conops.md`](docs/02-conops.md) | Mission phases, actors, modes, contingencies | Draft for review |
-| [`docs/03-assumptions.md`](docs/03-assumptions.md) | Labeled assumptions `A-##` | Draft for review |
-| [`docs/04-architecture.md`](docs/04-architecture.md) | Data flows, trust boundaries, C2 trust base, design decisions | Draft for review |
-| [`docs/05-threat-model.md`](docs/05-threat-model.md) | STRIDE per element, EMB3D, ATT&CK for ICS, priority and accepted risks | Draft for review |
-| [`docs/06-cyber-resiliency.md`](docs/06-cyber-resiliency.md) | NIST SP 800-160 Vol. 2 techniques and approaches mapped to the design; gaps | Draft for review |
-| [`docs/07-requirements.md`](docs/07-requirements.md) | Requirement conventions; full table with parent threats | Draft for review |
-| [`docs/08-verification-plan.md`](docs/08-verification-plan.md) | 16 verification events covering all requirements; VE-01 and VE-02 in full | Draft for review |
-| [`docs/references.md`](docs/references.md) | Sources, with pinned versions | Draft for review |
+| [`docs/01-system-description.md`](docs/01-system-description.md) | Purpose, scope, components, key material, software baseline | Baselined |
+| [`docs/02-conops.md`](docs/02-conops.md) | Mission phases, actors, modes, contingencies | Baselined |
+| [`docs/03-assumptions.md`](docs/03-assumptions.md) | Labeled assumptions `A-##` | Baselined |
+| [`docs/04-architecture.md`](docs/04-architecture.md) | Data flows, trust boundaries, C2 trust base, design decisions | Baselined |
+| [`docs/05-threat-model.md`](docs/05-threat-model.md) | STRIDE per element, EMB3D, ATT&CK for ICS, priority and accepted risks | Baselined |
+| [`docs/06-cyber-resiliency.md`](docs/06-cyber-resiliency.md) | NIST SP 800-160 Vol. 2 techniques and approaches mapped to the design; gaps | Baselined |
+| [`docs/07-requirements.md`](docs/07-requirements.md) | Requirement conventions; full table with parent threats | Baselined |
+| [`docs/08-verification-plan.md`](docs/08-verification-plan.md) | 16 verification events covering all requirements; VE-01 and VE-02 in full | Baselined |
+| [`docs/references.md`](docs/references.md) | Sources, with pinned versions | Baselined |
 | [`data/`](data/) | Elements, threats, requirements, trace and verification (CSV); pinned framework catalogs | Populated |
-| [`model/sysml/`](model/sysml/) | SysML v2 model: hand-written architecture, plus threats, requirements and verification generated from the CSVs; validated on the OMG Pilot Implementation | Draft for review |
-| [`brief/`](brief/) | 11-slide PDR-style brief (Marp source and PDF). Diagrams are rendered from the docs; the PDF is built in CI with a pinned toolchain | Draft for review |
+| [`model/sysml/`](model/sysml/) | SysML v2 model: hand-written architecture, plus threats, requirements and verification generated from the CSVs; validated on the OMG Pilot Implementation | Baselined |
+| [`brief/`](brief/) | 11-slide PDR-style brief (Marp source and PDF). Diagrams are rendered from the docs; the PDF is built in CI with a pinned toolchain | Baselined |
 
 ## Run the checks locally
 
