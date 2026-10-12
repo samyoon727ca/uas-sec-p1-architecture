@@ -34,7 +34,7 @@ SCHEMAS = {
     "trace.csv": ["threat_id", "req_id"],
     "verification.csv": [
         "ve_id", "title", "method", "evidence_repo", "req_ids", "procedure",
-        "pass_criteria", "status",
+        "pass_criteria", "status", "evidence",
     ],
 }
 
@@ -72,6 +72,9 @@ VE_ID = re.compile(r"^VE-\d{2}$")
 EMB3D_ID = re.compile(r"^TID-\d{3}$")
 ATTACK_ICS_ID = re.compile(r"^T\d{4}(\.\d{3})?$")
 SHALL = re.compile(r"\bshall\b", re.IGNORECASE)
+# Evidence links are pinned to a full commit SHA, so what they show cannot
+# change after P1 records the result.
+EVIDENCE_URL = re.compile(r"^https://github\.com/[\w.-]+/[\w.-]+/(blob|tree)/[0-9a-f]{40}/\S+$")
 
 STRIDE = {"S", "T", "R", "I", "D", "E"}
 MISSION_IMPACT = {"MI-1", "MI-2", "MI-3", "MI-4"}
@@ -288,7 +291,8 @@ def check_trace(rows: list[dict], threats: dict, reqs: dict, report: Report) -> 
 
 def check_verification(rows: list[dict], reqs: dict, report: Report) -> dict[str, dict]:
     """Every requirement must be covered by at least one verification event
-    whose method and evidence repo match the requirement's."""
+    whose method and evidence repo match the requirement's. A passed or
+    failed event must link its evidence."""
     index = index_unique(rows, "ve_id", VE_ID, report)
     covered: set[str] = set()
     for row in index.values():
@@ -300,6 +304,12 @@ def check_verification(rows: list[dict], reqs: dict, report: Report) -> dict[str
             report.error(where, f"evidence_repo '{row['evidence_repo']}' must be one of {sorted(EVIDENCE_REPOS)}")
         if row["status"] not in VE_STATUS:
             report.error(where, f"status '{row['status']}' must be one of {sorted(VE_STATUS)}")
+        links = split_multi(row["evidence"])
+        if row["status"] in {"passed", "failed"} and not links:
+            report.error(where, f"status '{row['status']}' requires 'evidence'")
+        for link in links:
+            if not EVIDENCE_URL.match(link):
+                report.error(where, f"evidence '{link}' must be a GitHub URL pinned to a full commit SHA")
         rids = split_multi(row["req_ids"])
         if not rids:
             report.error(where, "'req_ids' is required")

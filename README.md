@@ -82,6 +82,7 @@ Traceability is checked automatically on every push. [`tools/validate_trace.py`]
 - a STRIDE category is applied to an element type it doesn't fit;
 - an EMB3D or ATT&CK for ICS ID, or an SP 800-160 resiliency approach, is not in its pinned catalog (revoked IDs included);
 - a requirement is not covered by a verification event with the same method and evidence repo;
+- a verification event is marked passed or failed without a link to its evidence, pinned to a commit;
 - a generated doc view or the generated SysML model has drifted from the CSVs;
 - the SysML v2 model fails validation on the OMG Pilot Implementation.
 

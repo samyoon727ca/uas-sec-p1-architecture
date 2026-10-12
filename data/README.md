@@ -79,8 +79,11 @@ Every requirement needs at least one parent threat. Duplicate pairs are rejected
 | `evidence_repo` | `P2` to `P6` |
 | `req_ids` | One or more known requirements. Each must have the same method and evidence repo as the event |
 | `status` | `planned`, `passed` or `failed` |
+| `evidence` | Required when `status` is `passed` or `failed`; optional while `planned`. One or more links, separated by `;`, each a GitHub URL pinned to a full commit SHA: `https://github.com/<owner>/<repo>/blob/<sha>/<path>` (or `tree/`) |
 
 Every requirement must be covered by at least one event whose method and evidence repo match its own.
+
+The evidence repo (P2 to P6) records the result here with a pull request. Pinning each link to a commit means the evidence it shows cannot change after P1 records the result.
 
 ## Running locally
 

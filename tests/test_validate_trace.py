@@ -40,6 +40,10 @@ def event(veid, req_ids, **kw):
     return row
 
 
+SHA = "a1b2c3d4" * 5  # a full 40-character commit SHA
+EVIDENCE = f"https://github.com/owner/repo/blob/{SHA}/evidence/ve07-ci/summary.md"
+
+
 def baseline():
     """A small, fully valid data set."""
     return {
@@ -278,6 +282,32 @@ class ValidatorTest(unittest.TestCase):
         data = baseline()
         data["verification.csv"][0]["status"] = "done"
         self.assertError(data, "status 'done' must be one of")
+
+    def test_result_requires_evidence(self):
+        for status in ("passed", "failed"):
+            data = baseline()
+            data["verification.csv"][0]["status"] = status
+            self.assertError(data, f"status '{status}' requires 'evidence'")
+
+    def test_evidence_pinned_to_a_commit_is_valid(self):
+        data = baseline()
+        data["verification.csv"][0].update(status="passed", evidence=f"{EVIDENCE}; {EVIDENCE}#summary")
+        data["verification.csv"][1]["evidence"] = EVIDENCE  # optional while planned
+        report = self.run_validator(data)
+        self.assertEqual(report.errors, [])
+
+    def test_evidence_must_be_pinned_to_a_full_commit(self):
+        unpinned = [
+            EVIDENCE.replace(SHA, "main"),
+            EVIDENCE.replace(SHA, SHA[:7]),
+            EVIDENCE.replace("https://", "http://"),
+            f"https://github.com/owner/repo/tree/{SHA}",
+            "evidence/ve07-ci/summary.md",
+        ]
+        for link in unpinned:
+            data = baseline()
+            data["verification.csv"][0].update(status="passed", evidence=link)
+            self.assertError(data, f"evidence '{link}' must be a GitHub URL pinned to a full commit SHA")
 
     # --- trace ----------------------------------------------------------
     def test_trace_to_unknown_ids(self):

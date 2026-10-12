@@ -1,4 +1,4 @@
-"""Unit tests for tools/render_views.py marker handling."""
+"""Unit tests for tools/render_views.py: marker handling and the status cell."""
 from __future__ import annotations
 
 import sys
@@ -23,6 +23,13 @@ class SpliceTest(unittest.TestCase):
     def test_missing_markers_fail(self):
         with self.assertRaises(SystemExit):
             rv.splice("no markers", "v", "body")
+
+
+class StatusCellTest(unittest.TestCase):
+    def test_links_status_to_evidence(self):
+        self.assertEqual(rv.status_cell({"status": "planned", "evidence": ""}), "planned")
+        self.assertEqual(rv.status_cell({"status": "passed", "evidence": "u1"}), "[passed](u1)")
+        self.assertEqual(rv.status_cell({"status": "passed", "evidence": "u1; u2"}), "passed: [1](u1), [2](u2)")
 
 
 if __name__ == "__main__":
