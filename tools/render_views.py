@@ -130,15 +130,25 @@ def verification_events() -> str:
     lines = [
         f"{len(events)} verification events: " + ", ".join(f"{status[k]} {k}" for k in sorted(status)) + ".",
         "",
-        "| ID | Event | Method | Evidence | Verifies | Pass criteria |",
-        "|---|---|---|---|---|---|",
+        "| ID | Event | Method | Evidence | Verifies | Status | Pass criteria |",
+        "|---|---|---|---|---|---|---|",
     ]
     for e in events:
         lines.append(
             f"| {e['ve_id']} | {cell(e['title'])} | {e['method']} | {e['evidence_repo']} | "
-            f"{', '.join(split_multi(e['req_ids']))} | {cell(e['pass_criteria'])} |"
+            f"{', '.join(split_multi(e['req_ids']))} | {status_cell(e)} | {cell(e['pass_criteria'])} |"
         )
     return "\n".join(lines)
+
+
+def status_cell(event: dict) -> str:
+    """The status, linked to its evidence: one link, or numbered links if several."""
+    links = split_multi(event["evidence"])
+    if len(links) == 1:
+        return f"[{event['status']}]({links[0]})"
+    if links:
+        return f"{event['status']}: " + ", ".join(f"[{i}]({u})" for i, u in enumerate(links, 1))
+    return event["status"]
 
 
 VIEWS = {
