@@ -260,7 +260,7 @@ package UAS_Security {
     }
     dependency from 'THR-033' to UAS_Architecture::'DS-CC-SYS';
     concern 'THR-034' : Threat {
-        doc /* Keys extracted from a captured CC. An adversary extracts the CC's copy of the signing key and its WireGuard private key from a captured vehicle. */
+        doc /* Keys extracted from a captured CC. An adversary extracts the CC's copy of the signing key and its WireGuard private key from a captured vehicle. Residual after SR-010: with time and tools, an adversary can probe the bus between the SoC and the TPM, where an encrypted unseal session (P2 SR-010.4) stops passive reads only; or, if the TPM can be reset without resetting the CC, reset it and replay approved measurements to unseal the keys (P2 A2-02). Active bus and fault-injection attacks are P5's scope. */
         attribute :>> missionImpact = MissionImpact::'MI-1';
         attribute :>> stride = StrideCategory::'informationDisclosure';
         attribute :>> disposition = Disposition::'mitigate';

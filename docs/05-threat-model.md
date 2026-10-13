@@ -124,4 +124,5 @@ These are ranked by mission impact and by how reachable the path is for the A-08
 - **GNSS spoofing that the receiver does not report** is not detected.
 - **PX4's signing implementation is unaudited** (THR-064). Post-reboot replay (THR-065) rests on an assumption that VE-02 will confirm or retire.
 - **Physical tampering** is detected (SR-023), not prevented. This follows the generic anti-tamper scope.
+- **Keys in a captured CC's TPM** (THR-034). Sealing (SR-010) keeps them from removed storage and from a modified boot. An adversary with time can still attack the TPM bus actively, or replay approved measurements if the TPM can be reset on its own (P2 A2-02). P5 covers these physical attacks.
 - **Hardware supply-chain insertion before receipt** that leaves reported firmware versions unchanged (THR-012, THR-013).
