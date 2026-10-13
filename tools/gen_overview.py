@@ -40,6 +40,7 @@ from validate_trace import split_multi  # noqa: E402
 SRC = ROOT / "overview" / "src"
 DATA = ROOT / "data"
 SNAPSHOT = ROOT / "overview" / "p2-snapshot"
+AUDIT = ROOT / "overview" / "audit"
 
 METHOD = {"T": "Test", "I": "Inspection", "D": "Demonstration", "A": "Analysis"}
 COMPONENT = {"CMP-CC": "CC", "CMP-FC": "FC", "CMP-GCS": "GCS", "CMP-MSS": "MSS"}
@@ -134,7 +135,7 @@ def json_path(obj, path: str):
 class Data:
     """P1's CSVs, the P2 snapshot and its evidence summaries, and the commits they come from."""
 
-    def __init__(self, data: Path = DATA, snapshot: Path = SNAPSHOT, root: Path = ROOT) -> None:
+    def __init__(self, data: Path = DATA, snapshot: Path = SNAPSHOT, root: Path = ROOT, audit: Path = AUDIT) -> None:
         self.elements = {e["element_id"]: e for e in read_csv(data / "elements.csv")}
         self.threats = read_csv(data / "threats.csv")
         self.threat = {t["threat_id"]: t for t in self.threats}
@@ -166,6 +167,10 @@ class Data:
                     if not summary.exists():
                         raise GenError(f"{c['tc_id']}: no summary.json in the P2 snapshot for {path}")
                     self.evidence[path] = json.loads(read_text(summary))
+
+        # The audit's findings, copied unchanged from the audit (overview/audit/README.md).
+        findings = audit / "findings.json"
+        self.audit = json.loads(read_text(findings)) if findings.exists() else None
 
         head = git("rev-parse", "HEAD", cwd=root)
         self.p1 = {
@@ -596,7 +601,83 @@ def block_mermaid_from(d: Data, args: list[str], root: Path = ROOT) -> str:
     return f"```mermaid\n{body}```"
 
 
+# --- the audit's findings (limitations chapter) ---------------------------------------
+
+SEVERITIES = ("high", "medium", "low", "info")
+
+
+def md_text(text: str) -> str:
+    """Finding text as literal Markdown: no character in it can start markup or HTML."""
+    text = " ".join(str(text).split()).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    return re.sub(r"([\\`*_\[\]])", r"\\\1", text)
+
+
+def audit_findings(d: Data) -> list[dict]:
+    """The findings, most severe first, in ID order within a severity."""
+    if d.audit is None:
+        raise GenError("no overview/audit/findings.json")
+    findings = d.audit["findings"]
+    for f in findings:
+        if f.get("severity") not in SEVERITIES:
+            raise GenError(f"{f.get('id')}: severity must be one of {', '.join(SEVERITIES)}")
+        for key in ("id", "title", "repo", "claim", "observation", "evidence", "fix"):
+            if not f.get(key):
+                raise GenError(f"{f.get('id')}: finding has no '{key}'")
+    return sorted(findings, key=lambda f: (SEVERITIES.index(f["severity"]), f["id"]))
+
+
+def anchor(finding_id: str) -> str:
+    return finding_id.lower()
+
+
+def block_audit_summary(d: Data, args: list[str]) -> str:
+    findings = audit_findings(d)
+    base = d.audit.get("baselines", {})
+    rows = [["Audit", f"{md_text(d.audit.get('audit', ''))}, {d.audit.get('date', '')}"],
+            ["P1 audited at", f"`{md_text(base.get('p1', '?'))}`"],
+            ["P2 audited at", f"`{md_text(base.get('p2', '?'))}`"]]
+    for sev in SEVERITIES:
+        ids = [f["id"] for f in findings if f["severity"] == sev]
+        if ids:
+            rows.append([f"{sev.capitalize()} ({len(ids)})", ", ".join(f"[{i}](#{anchor(i)})" for i in ids)])
+    return table(["Item", "Value"], rows)
+
+
+def block_audit_scale(d: Data, args: list[str]) -> str:
+    if d.audit is None:
+        raise GenError("no overview/audit/findings.json")
+    scale = d.audit.get("severity_scale", {})
+    return table(["Severity", "Meaning"], [[s.capitalize(), md_text(scale.get(s, ""))] for s in SEVERITIES])
+
+
+def block_audit_index(d: Data, args: list[str]) -> str:
+    return "\n".join(['<div class="audit-index">', "",
+                      table(["ID", "Severity", "Repo", "Finding"],
+                            [[f"[{f['id']}](#{anchor(f['id'])})", f["severity"], md_text(f["repo"]),
+                              md_text(f["title"])] for f in audit_findings(d)]),
+                      "", "</div>"])
+
+
+def block_audit_findings(d: Data, args: list[str]) -> str:
+    parts = []
+    for f in audit_findings(d):
+        parts += [f"### {f['id']}: {md_text(f['title'])} {{#{anchor(f['id'])}}}", "",
+                  '<div class="tc-card">', "",
+                  table([f["id"], f["severity"].capitalize()], [
+                      ["Repo", md_text(f["repo"])],
+                      ["Where", md_text(f["claim"])],
+                      ["Finding", md_text(f["observation"])],
+                      ["Evidence", md_text(f["evidence"])],
+                      ["Proposed fix", md_text(f["fix"])],
+                  ]), "", "</div>", ""]
+    return "\n".join(parts).rstrip("\n")
+
+
 BLOCKS = {
+    "audit-summary": block_audit_summary,
+    "audit-scale": block_audit_scale,
+    "audit-index": block_audit_index,
+    "audit-findings": block_audit_findings,
     "p1-repos": block_p1_repos,
     "p1-reqs-of": block_p1_reqs_of,
     "p1-threats-of": block_p1_threats_of,

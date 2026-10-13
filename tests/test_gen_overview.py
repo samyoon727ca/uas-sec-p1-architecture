@@ -178,6 +178,42 @@ class ProvenanceTest(unittest.TestCase):
         self.assertIn(DATA.p1["data"], text)
 
 
+class AuditTest(unittest.TestCase):
+    def test_every_finding_is_in_the_index_and_in_full(self):
+        index = go.block_audit_index(DATA, [])
+        full = go.block_audit_findings(DATA, [])
+        for f in DATA.audit["findings"]:
+            self.assertIn(f"[{f['id']}](#{f['id'].lower()})", index)
+            self.assertIn(f"{{#{f['id'].lower()}}}", full)
+            for key in ("claim", "observation", "evidence", "fix"):
+                self.assertIn(go.cell(go.md_text(f[key])), full)   # the text itself, not a summary
+
+    def test_most_severe_first(self):
+        order = [f["severity"] for f in go.audit_findings(DATA)]
+        self.assertEqual(order, sorted(order, key=go.SEVERITIES.index))
+
+    def test_finding_text_cannot_start_markup(self):
+        self.assertEqual(go.md_text("a_b <c> *d* [e] `f` \\g &"),
+                         "a\\_b &lt;c&gt; \\*d\\* \\[e\\] \\`f\\` \\\\g &amp;")
+
+    def test_a_bad_finding_fails(self):
+        d = go.Data.__new__(go.Data)
+        d.audit = {"findings": [{"id": "A-01", "severity": "severe", "title": "t", "repo": "P2", "claim": "c",
+                                 "observation": "o", "evidence": "e", "fix": "f"}]}
+        with self.assertRaises(go.GenError):
+            go.block_audit_index(d, [])
+        d.audit["findings"][0].update(severity="high", fix="")
+        with self.assertRaises(go.GenError):
+            go.block_audit_index(d, [])
+
+    def test_no_audit_file_fails_only_if_asked_for(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = go.Data(audit=Path(tmp))
+            self.assertIsNone(d.audit)
+            with self.assertRaises(go.GenError):
+                go.block_audit_summary(d, [])
+
+
 class SnapshotTest(unittest.TestCase):
     def test_pin_is_a_full_commit(self):
         repo, commit = snap.read_pin(snap.SNAPSHOT / "pin.txt")

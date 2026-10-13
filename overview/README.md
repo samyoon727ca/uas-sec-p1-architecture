@@ -1,6 +1,6 @@
 # Project overview (PDF)
 
-[`overview.pdf`](overview.pdf) explains the portfolio from first principles, for an engineer new to secure boot, measured boot and TPMs: the system and its threats (P1); every concept P2 relies on; P2's design, test cases and evidence; a step-by-step guide to rebuilding and rerunning the tests; and the roadmap for P3 to P6. A chapter is reserved for limitations and open findings, to be written later from an audit.
+[`overview.pdf`](overview.pdf) explains the portfolio from first principles, for an engineer new to secure boot, measured boot and TPMs: the system and its threats (P1); every concept P2 relies on; P2's design, test cases and evidence; a step-by-step guide to rebuilding and rerunning the tests; the roadmap for P3 to P6; and the limitations and open findings of the 2026-10-13 audit of P1 and P2.
 
 The PDF is generated. Every table of requirements, threats, verification events, test cases and evidence runs, and every count and status in its text, is filled in at build time from P1's `data/*.csv` and from a pinned snapshot of P2 (below). Nothing is retyped, so the document cannot drift from the data. It states the P1 and P2 commits it was built from on its "Built from" page and in every page footer.
 
@@ -11,7 +11,8 @@ The PDF is generated. Every table of requirements, threats, verification events,
 | `src/front.md` | Title page, contents, conventions, "Built from" table |
 | `src/p1.md` … `src/p6.md` | One file per project: a full chapter or a roadmap stub (below) |
 | `src/roadmap.md` | Introduction of the roadmap chapter that collects the stubs |
-| `src/limitations.md` | Placeholder for the limitations and open findings chapter |
+| `src/limitations.md` | The limitations and open findings chapter: a short introduction, then tables generated from `audit/findings.json` |
+| `audit/` | A byte-for-byte copy of the audit's `findings.json`, with its provenance (`audit/README.md`) |
 | `src/appendix.md` | Glossary and sources |
 | `p2-snapshot/` | Byte-for-byte copies of P2 files at the commit in `p2-snapshot/pin.txt` |
 | `build.sh` | The build: generate, render diagrams, print to PDF |
@@ -50,13 +51,19 @@ The order is fixed by the generator: `front.md`, the chapters, the roadmap (if a
 
 ## The limitations chapter
 
-`src/limitations.md` is a separate file that the build always includes, after the chapters and the roadmap and before the appendix. Until it is written it holds only a marked placeholder (the `<div class="placeholder">` box), which says the chapter is reserved and points to the limitations already stated elsewhere. It is to be written from the audit of P1 and P2, at the step that reconciles the audit with this document; nothing in it may be written before then.
+`src/limitations.md` is a separate file that the build always includes, after the chapters and the roadmap and before the appendix. It reports the audit of P1 and P2 made on 2026-10-13. Its short introduction is written by hand. Everything else comes from four generator blocks reading `audit/findings.json`:
+- `audit-summary`: baselines and IDs by severity;
+- `audit-scale`: the severity scale;
+- `audit-index`: one line per finding;
+- `audit-findings`: each finding in full, under an anchor such as `#a-01`.
 
-To fill it:
+The finding text is copied, not paraphrased, so the chapter cannot soften the audit.
 
-1. Replace everything below the heading with the chapter's text. Keep the heading line `# Limitations and open findings {#limitations}`: other chapters link to `#limitations`.
-2. Cite each finding's source (the audit report, and the P1 or P2 file and line it concerns), and use generated values for any status, count or commit, as everywhere else.
-3. Update the sentence that calls the chapter reserved in `src/front.md` ("How to read it"). Where a finding changes what a test case's pass shows, also correct that case's text in `src/p2.md`.
+To update it after a later audit or after triage:
+
+1. Replace `audit/findings.json` with the new audit's file, unchanged, and update the hashes in `audit/README.md`.
+2. Keep the heading line `# Limitations and open findings {#limitations}`: other chapters link to `#limitations`.
+3. Check the links from `src/p2.md` to findings, written `[](#a-NN)`. The build fails on a link to a finding that no longer exists (`render.mjs` rejects unknown ids). Whether the sentence around each link is still true has to be checked by hand.
 4. Rebuild the PDF.
 
 ## Writing the sources

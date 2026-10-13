@@ -21,7 +21,7 @@ The portfolio is a set of repositories about one notional small unmanned aircraf
 
 ## How to read it {-}
 
-The P1 chapter ([](#p1)) explains the system and why each P2 requirement exists. The P2 chapter ([](#p2)) first explains every concept P2 relies on, each before it is used, then the design, every test case, how to read the evidence, and how to rebuild everything. The roadmap ([](#roadmap)) covers P3 to P6. The next chapter ([](#limitations)) is reserved for limitations and open findings. The appendix ([](#appendix)) holds a glossary and the sources.
+The P1 chapter ([](#p1)) explains the system and why each P2 requirement exists. The P2 chapter ([](#p2)) first explains every concept P2 relies on, each before it is used, then the design, every test case, how to read the evidence, and how to rebuild everything. The roadmap ([](#roadmap)) covers P3 to P6. The next chapter ([](#limitations)) reports the limitations and open findings of an independent audit of P1 and P2, reproduced unchanged from the audit's findings file. The appendix ([](#appendix)) holds a glossary and the sources.
 
 If you only want to rebuild and rerun the tests, go to [](#recreate) and look up concepts in [](#concepts) as you meet them.
 

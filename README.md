@@ -116,7 +116,7 @@ The column rules are in [`data/README.md`](data/README.md).
 | [`data/`](data/) | Elements, threats, requirements, trace and verification (CSV); pinned framework catalogs | Populated |
 | [`model/sysml/`](model/sysml/) | SysML v2 model: hand-written architecture, plus threats, requirements and verification generated from the CSVs; validated on the OMG Pilot Implementation | Baselined |
 | [`brief/`](brief/) | 11-slide PDR-style brief (Marp source and PDF). Diagrams are rendered from the docs; the PDF is built in CI with a pinned toolchain | Baselined |
-| [`overview/`](overview/) | Project overview from first principles (Markdown sources and PDF): P1, P2 in full, a roadmap for P3–P6, and a reserved limitations chapter. Tables and statuses are generated from `data/` and a pinned P2 snapshot (`overview/p2-snapshot/`, checked by `tools/check_p2_snapshot.py`); the PDF is built in CI with a pinned toolchain (the brief's mermaid-cli and puppeteer, plus markdown-it) | Draft: limitations chapter reserved |
+| [`overview/`](overview/) | Project overview from first principles (Markdown sources and PDF): P1, P2 in full, a roadmap for P3–P6, and the limitations and open findings of the 2026-10-13 audit, generated from `overview/audit/findings.json`. Tables and statuses are generated from `data/` and a pinned P2 snapshot (`overview/p2-snapshot/`, checked by `tools/check_p2_snapshot.py`); the PDF is built in CI with a pinned toolchain (the brief's mermaid-cli and puppeteer, plus markdown-it) | Draft: audit findings open, awaiting triage |
 
 ## Run the checks locally
 

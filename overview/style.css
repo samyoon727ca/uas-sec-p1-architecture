@@ -108,6 +108,7 @@ nav.toc .page { flex: none; min-width: 1.6em; text-align: right; font-variant-nu
 .tc-card table { margin-top: 0.2em; }
 .tc-card table th:first-child { width: 6.5em; }
 .tc-card table td:first-child { font-weight: 700; background: var(--shade); }
+.audit-index td:nth-child(-n+2) { white-space: nowrap; }
 .placeholder {
   border: 1.5px dashed var(--accent);
   padding: 1em 1.2em;
