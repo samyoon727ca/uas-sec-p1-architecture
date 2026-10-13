@@ -671,7 +671,7 @@ package UAS_Security {
     satisfy 'SR-017' by UAS_Architecture::uasSystem.airVehicle.missionComputing.cc;
     requirement 'SR-018' : SecurityRequirement {
         doc /* The FC shall boot only firmware signed with the project firmware key, using PX4 Bootloader Secure Boot. */
-        comment rationale /* Blocks unsigned or modified firmware loaded over USB or from tampered artifacts. PX4's secure boot uses Ed25519 signatures. */
+        comment rationale /* Blocks unsigned or modified firmware loaded over USB or from tampered artifacts. PX4's secure boot uses Ed25519 signatures. Its root of trust is the boot loader in the FC's flash, with the trusted public keys compiled in; the PX4 boot loader sets no flash write-protection, so SR-018 holds only while SR-024 keeps the debug port closed. */
         frame 'THR-030';
         frame 'THR-041';
         frame 'THR-058';
@@ -735,7 +735,7 @@ package UAS_Security {
     satisfy 'SR-023' by UAS_Architecture::uasSystem.airVehicle.flightCritical.fc;
     requirement 'SR-024' : SecurityRequirement {
         doc /* The FC shall have its SWD/JTAG debug port disabled or physically sealed in the flight configuration. */
-        comment rationale /* PX4 notes that exposed debug ports allow a full firmware reflash and bypass all software security. */
+        comment rationale /* PX4 notes that exposed debug ports allow a full firmware reflash and bypass all software security. That includes SR-018: over SWD the boot loader itself, and the keys it trusts, can be replaced. */
         frame 'THR-030';
         attribute :>> method = VerificationMethod::'test';
         attribute :>> evidenceRepo = "P5";
