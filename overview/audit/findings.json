@@ -1,0 +1,372 @@
+{
+  "audit": "P1 and P2, adversarial, read-only",
+  "date": "2026-10-13",
+  "baselines": {
+    "p1": "e539aa638d3e44c1982341e927d974b4396e0576",
+    "p2": "db31c14 (origin/main), P1 snapshot pinned to e539aa6",
+    "px4": "fca3df865af36124a28c9d607e850f111dbaaea9 (v1.18.0-rc1)",
+    "u_boot": "v2026.07 tarball"
+  },
+  "severity_scale": {
+    "high": "a security property or recorded pass does not hold as written, or holds only under a condition nobody owns",
+    "medium": "a test cannot detect a failure it is meant to detect, a seam leaves an obligation unowned, or evidence integrity depends on something unchecked",
+    "low": "stale, inconsistent or unclear text; reproducibility friction; hygiene",
+    "info": "checked and sound"
+  },
+  "labels": {
+    "verified": "checked by reading code or data, or by an experiment in experiments/",
+    "analysis": "reasoned from a specification or source without a demonstration"
+  },
+  "findings": [
+    {
+      "id": "A-01",
+      "severity": "high",
+      "title": "Anti-rollback epoch can be reset by anyone holding the (empty) TPM owner authorization",
+      "repo": "P2",
+      "claim": "docs/03-measured-boot-sealing.md:63 'In P2 the epoch bit is set with TPM owner authorization. A fielded CC needs an MSS-signed authorization instead (OI2-05, P3)'; docs/02-cc-boot-chain.md:83 'So a rolled-back CC cannot join C2'; tests/ve07/provision.py:97 'owner authorization available (empty in P2)'; tests/ve07/provision.py:47 EPOCH_NV_ATTRIBUTES = 'nt=bits|ownerwrite|authread|no_da'",
+      "observation": "SR-010.3 is P2's only anti-rollback (DD2-07). It holds only while the epoch index keeps its bits. The index is defined in the owner hierarchy without TPMA_NV_POLICY_DELETE, so any caller with owner authorization can remove it, and P2 leaves owner authorization empty; nothing in P2 sets lockout or platform authorization either. The signed policies identify the index by its name, which tools/approve_policy.py:75-80 computes from handle, attributes, size and authPolicy only, so an index defined again with the same public area has the same name, starts with no bits set, and satisfies the policy of every epoch. In P2 that caller can be any code with TPM access on the CC, including a rolled-back chain that the epoch exists to lock out. TC-08 rolls back only an honest older chain that does not touch the TPM, and no case checks that the index cannot be removed. OI2-05 covers advancing the epoch, not removing it.",
+      "evidence": "[analysis] TPM 2.0 Library Part 3, TPM2_NV_UndefineSpace authorization (owner or platform; policy-delete indices excluded); P2 code as cited. Not demonstrated in this audit.",
+      "fix": "Make removal of the epoch index need an authorization the CC never holds: for example TPMA_NV_POLICY_DELETE with an MSS-authorized policy, or owner, lockout and platform authorization set to values held only by the MSS, with the platform hierarchy disabled or re-randomized by U-Boot at every boot. Extend OI2-05 to cover removal. Add a TC-08 case in which an owner-authorized caller removes and re-creates the index and the older chain must still be refused. Until then reword docs/02:83 and docs/06:24 to state the condition."
+    },
+    {
+      "id": "A-02",
+      "severity": "high",
+      "title": "PCRs are never capped after unseal; keys stay releasable for the rest of an approved boot",
+      "repo": "P2, P1 (seam with P4)",
+      "claim": "P1 data/requirements.csv:11 SR-010 rationale 'a modified boot chain cannot unseal them'; P2 docs/03-measured-boot-sealing.md:3 'released ... only to the measured boot state'; cc/initramfs/init:20-36 (no PCR extend after p2-unseal)",
+      "observation": "After p2-unseal releases the keys, nothing extends a policy PCR, so the PCRs keep their approved values for the rest of the boot and the same signed policy releases the keys again to any later code. In P2 the only verified and measured code is U-Boot, the kernel, the devicetree and the initramfs. The root filesystem that follows is P4's (SR-006, not built), and the design does not say that SR-006's dm-verity root hash must come from the measured or signed boot. Until both hold, an offline change to the root filesystem (THR-032, which P2 traces to SR-005.1) runs in an approved PCR state with TPM access. Neither P1 nor P2 records SR-010's dependency on SR-006 the way P1 recorded SR-018's on SR-024 (P2 change 3).",
+      "evidence": "X01 (experiments/results/X01-second-unseal.txt; console /root/audit/ev/X01-second-unseal/TC-05.log in p2-noble): after the first unseal, a second p2-unseal run in the same boot printed 'wireguard ok' and 'mavlink ok', and the SHA-256 of each key it released equals the sealed key's.",
+      "fix": "After unsealing, extend a policy PCR (for example PCR 9) with a fixed separator, so a second unseal in the same boot fails, and add a test case that checks it. Record in P1 (SR-010 or SR-006 rationale) and in P2 docs/01 §1.5 that SR-010's binding extends past the initramfs only once SR-006 is in place with its root hash carried in the signed FIT or the measured command line."
+    },
+    {
+      "id": "A-03",
+      "severity": "medium",
+      "title": "TC-06's kernel variant changes only the gzip header; a shared measurement fault passes every case",
+      "repo": "P2",
+      "claim": "tests/ve07/boot_cases.py:630 'kernel[4:8] = struct.pack(\"<I\", 1)   # gzip MTIME: the same kernel, other bytes'; data/testcases.csv:7 TC-06 'Boot chains that each differ in one measured item (... kernel ...)'",
+      "observation": "TC-06d changes only bytes 4 to 7 of the stored kernel (the gzip MTIME). A measurement that covers only the start of the kernel image still moves PCR 8 for that change, so TC-06d cannot tell whole-image measurement from partial measurement. TC-10 catches a U-Boot-only fault, because the predictor hashes the whole image (M04a red), but if the predictor shares the fault, every case passes (M04b green). The kernel body is then unmeasured and nothing in VE-07 notices.",
+      "evidence": "M04a: U-Boot measures the first 4 KiB of the kernel; TC-05 and TC-10 red. M04b: same, and predict_pcrs.py hashes the same 4 KiB; TC-05, TC-06d and TC-10 all green (experiments/results/M04a-kernel4k-uboot.txt, M04b-kernel4k-both.txt). M15 tests a tail change instead (experiments/results/M15-tc06-tail.txt).",
+      "fix": "Make TC-06d change the kernel image away from its header, for example at the tail of the stored image (see M15) or by recompressing at another gzip level so every block changes, and keep the 'only PCR 8 moved' check. Add to TC-10 an independent check that the logged PCR 8 digest equals SHA-256 of the whole kernel data node, computed without predict_pcrs.py."
+    },
+    {
+      "id": "A-04",
+      "severity": "medium",
+      "title": "TC-09 cannot detect an unsalted unseal session, which SR-010.4 forbids",
+      "repo": "P2",
+      "claim": "data/requirements.csv:6 SR-010.4 'The CC shall unseal its keys only over a salted TPM session with response encryption'; data/testcases.csv:10 TC-09 pass criteria 'The unsealed key bytes never appear in the recorded traffic; in the control run they do'; cc/initramfs/p2-unseal.c:126-128",
+      "observation": "With the agent's session started unsalted and unbound, and response encryption still on, TC-05 and TC-09 pass. TC-09 is the only test case for SR-010.4, and its criterion checks only that the key bytes do not appear in clear. In TPM 2.0, a session with neither salt nor bind derives its session key only from values that cross the interface, so the salt is what makes the encryption meaningful against a bus probe. The test cannot detect that the salt is gone.",
+      "evidence": "M07 (experiments/results/M07-unsalted.txt): Esys_StartAuthSession with tpmKey ESYS_TR_NONE; TC-05 pass, TC-09 pass. [analysis] TPM 2.0 Library Part 1, session key computation for unsalted, unbound sessions.",
+      "fix": "Add a check to TC-09 that each policy session used for TPM2_Unseal was started by a TPM2_StartAuthSession naming the persistent parent as tpmKey with a non-empty encryptedSalt, parsed from the recorded commands. Keep an unsalted agent build as a second control that must fail that check."
+    },
+    {
+      "id": "A-05",
+      "severity": "medium",
+      "title": "The policyRef binding is untested; emptying it leaves every case green",
+      "repo": "P2",
+      "claim": "docs/03-measured-boot-sealing.md:33 'policyRef = p2/cc-keys. policyRef names this use, so a policy the MSS signs for another purpose cannot be reused here'; tools/approve_policy.py:44; cc/initramfs/p2-unseal.c:44",
+      "observation": "With policyRef emptied in both the MSS tool and the agent, TC-05 and TC-08a to TC-08d all pass. No test case presents a policy that K-CC-POL validly signed under another policyRef, so the binding docs/03 relies on can disappear unnoticed. The unit test keeps the two constants equal (tests/test_approve_policy.py:136), which is consistency, not the property.",
+      "evidence": "M11 (experiments/results/M11-policyref.txt): harness exit 0.",
+      "fix": "Add a TC-08 case: an approved policy for the current release signed with the real K-CC-POL over a different policyRef must be refused, at PolicyAuthorize."
+    },
+    {
+      "id": "A-06",
+      "severity": "medium",
+      "title": "TC-04a's .config check is circular; the DEBIX environment case targets the wrong location",
+      "repo": "P2",
+      "claim": "docs/02-cc-boot-chain.md:62 '[cc/build.sh] fails if any line is missing from the built .config, and TC-04 checks it again'; docs/02-cc-boot-chain.md:72 'the DEBIX fragment must turn it off, and the .config check must cover it'; data/testcases.csv:5 TC-04 'inject a boot-loader environment with another bootcmd into flash'; cc/uboot/check_config.py:38-40",
+      "observation": "check_config.py, and TC-04a which reuses it, confirm that the built .config holds the lines of the same fragments it was built from. A hardening line deleted from a fragment is therefore never noticed: with legacy images re-enabled (M01), the flash environment re-enabled (M02) or measured boot off (M03), TC-04a passes and only the behavioral cases fail. In emulation those cases exist. On the DEBIX the defconfig sets ENV_IS_IN_MMC, and TC-04's hardware procedure injects the environment 'into flash', so a DEBIX fragment that forgot to unset ENV_IS_IN_MMC would pass both the .config check and the procedure as written. M02 shows that ENV_IS_NOWHERE does not keep another enabled location from being read.",
+      "evidence": "M01, M02, M03 (experiments/results/): TC-04a pass in each; TC-04e, TC-04f, TC-05/TC-10 red respectively. M02 log: 'Loading Environment from Flash... OK', autoboot countdown, injected bootcmd ran.",
+      "fix": "Add a fixed policy check, independent of the fragments: no CONFIG_ENV_IS_IN_* other than NOWHERE; LEGACY_IMAGE_FORMAT, BOOTSTD_BOOTCOMMAND and USE_PREBOOT off; FIT_SIGNATURE, MEASURED_BOOT and MEASURE_DEVICETREE on; BOOTDELAY -2. Run it in build.sh and TC-04a. Change TC-04's hardware procedure to inject into the board's own environment location (MMC on the DEBIX)."
+    },
+    {
+      "id": "A-07",
+      "severity": "medium",
+      "title": "The validator accepts any existing file as evidence for a pass",
+      "repo": "P2",
+      "claim": "README.md:74 'a passed or failed result has no evidence' (validator rule); tools/validate_trace.py:212-221; docs/06-verification.md:61 'A test case's evidence column points at that folder'",
+      "observation": "The validator accepts a passed status if the evidence path exists under evidence/. It does not check that the path is a run folder, that its summary.json records that test case as passed, that its environment is ci for a CI status or hw for a hardware status, or that it belongs to the right event. render_views.py then counts the pass. Prior finding P2-10 (2026-10-09) is still open.",
+      "evidence": "D1: TC-12 hw_status=passed with evidence/ve07-ci/20261011-7bc523b/summary.md: validator PASS, generated view 'VE-08 ... 1 of 3' hardware runs passed. D2: TC-05 pointed at a run without TC-05: PASS. D3: evidence/README.md accepted as TC-10 evidence: PASS (experiments/data_mut.py).",
+      "fix": "Require the evidence to be a run folder (evidence/<event>-<ci|hw>/<date>-<commit>/) whose summary.json names the same event, has environment.kind matching the column (ci or hw), and records test_cases[tc_id] equal to the CSV status. Add unit tests for D1 to D3. Make docs/06:61 and the CSV agree on folder versus summary.md."
+    },
+    {
+      "id": "A-08",
+      "severity": "medium",
+      "title": "Evidence provenance expires with the GitHub artifacts (2027-01-09 to 01-11); no digests recorded",
+      "repo": "P2",
+      "claim": "evidence/README.md:16 'A ci folder is that artifact, downloaded unchanged'; docs/06-verification.md:66 'A ci folder is the unchanged artifact of a GitHub Actions run'",
+      "observation": "True today: each of the six committed folders is byte-identical to its artifact. The artifacts expire between 2027-01-09T07:05Z and 2027-01-11T05:28Z, and GitHub run logs expire with them. The repo records run IDs but not artifact IDs or digests, so after expiry nobody can check the claim, and a folder edited after download could not be told from the original.",
+      "evidence": "[verified] gh api .../actions/runs/<id>/artifacts on 2026-10-13: artifact IDs, sha256 digests and expiry for runs 38351585198, 38349138261, 38347668352, 38345035945, 38340963718, 38120187352; gh run download of each, diff -r against the committed folder: identical.",
+      "fix": "Record in evidence/README.md, per folder, the artifact ID and the digest GitHub reports, plus a SHA-256 manifest of the folder. For lasting provenance, attest the artifact (actions/attest-build-provenance) or attach it to a release, which does not expire."
+    },
+    {
+      "id": "A-09",
+      "severity": "medium",
+      "title": "P1 VE-13 passes with a working but sealed FC debug port, which SR-018 depends on",
+      "repo": "P1 (seam with P2 and P5)",
+      "claim": "P1 data/verification.csv:14 VE-13 pass criteria 'No debug session can be established, or the port is sealed so that any attempt is evident'; P1 data/requirements.csv:19 SR-018 rationale 'SR-018 holds only while SR-024 keeps the debug port closed'",
+      "observation": "VE-13 passes if the debug port works but is sealed. SR-018's root of trust is the FC boot loader, which sets no flash write protection, so SR-018 depends on the port being closed, not on tampering being evident. Against a captured vehicle (A-08 tier 2), a seal records the attack but does not stop it, so a VE-13 pass would not support SR-018 as P1 and P2 (docs/04:22) state it.",
+      "evidence": "[verified] P1 data as cited; PX4 boot loader sets no write protection (P2 docs/04-fc-secure-boot.md:22).",
+      "fix": "Split VE-13's criteria: the pass requires that no debug session can be established in the flight configuration (for example, STM32H7 readout protection at the level that disables debug), and 'sealed' is recorded as a residual risk against SR-018 rather than as a pass."
+    },
+    {
+      "id": "A-10",
+      "severity": "medium",
+      "title": "SR-010.4 is verified only on swtpm's log, with no hardware run, contrary to A2-04",
+      "repo": "P2",
+      "claim": "docs/01-scope-and-trace.md:50 A2-04 'Hardware runs repeat the sealing cases on a real TPM'; tests/ve07/README.md:40 'TC-09 shows that the unsealed keys cross the TPM interface only encrypted; on hardware the same bytes cross SPI'; data/testcases.csv:10 TC-09 hw_status n/a",
+      "observation": "TC-09 is the only test case for SR-010.4, the requirement that exists because of a bus probe on a captured vehicle, and it has no hardware run. Its evidence is swtpm's own log of command and response buffers, not a capture of the SPI bus. That the same bytes cross SPI is stated as fact, but it is an assumption. A2-04 says the sealing cases repeat on hardware, but TC-09 does not. Prior finding P2-11 is still open.",
+      "evidence": "[verified] data/testcases.csv:10; tests/ve07/boot_cases.py:207-218 parses swtpm log level 20.",
+      "fix": "Either add a hardware TC-09 that captures the TPM's SPI lines with a logic analyzer during unseal and searches the capture, or record SR-010.4 as emulation-only with a stated rationale and reword A2-04 and tests/ve07/README.md:40."
+    },
+    {
+      "id": "A-11",
+      "severity": "medium",
+      "title": "TC-11 re-implements PX4's boot decision and fixes flash at 2 MiB; the copies already diverge",
+      "repo": "P2",
+      "claim": "docs/04-fc-secure-boot.md:50 'PX4's own find_toc(), verify_app(), stub keystore and monocypher'; tests/ve08/host/check_image.c:84-110; tests/ve08/host/sw_crypto_ed25519.c:45-62; tests/ve08/host/hw_config.h:14-15",
+      "observation": "TC-11 runs PX4's find_toc() and verify_app(), but re-implements jump_to_app()'s loop (PX4 bl.c:308-389) and the Ed25519 path of sw_crypto. The re-implementations differ from PX4. check_image.c omits the first check in bl.c:317, which stays in the boot loader when the app's first word is 0xFFFFFFFF. The crypto stand-in adds a keylen == 32 test that PX4's crypto_signature_check lacks, and reads keys through keystore_get_key rather than PX4's key cache. Nothing checks that these stand-ins still match PX4 at the next pin (A2-05 is about behavior only). The flash size is fixed at 2 MiB here but read from the chip at run time on the board, and it is not labeled as an assumption. The CI image is 1,941,520 bytes, 24,560 bytes short of the 1,966,080 bytes of app flash.",
+      "evidence": "[verified] Comparison with PX4 fca3df8 platforms/nuttx/src/bootloader/common/bl.c and src/drivers/sw_crypto/crypto.c; evidence/ve08-ci/20261013-aac4299/TC-11a.log line 1. T series with synthetic images (experiments/results/T-series.txt). T1 and T2: mutated stand-ins turn every negative case red. T3: a validly signed image whose first word is 0xFFFFFFFF 'starts' in the checker, while PX4's boot loader would stay. T4: with BOARD_FLASH_SIZE at 1 MiB, a 1,941,520-byte image cannot be placed (exit 2).",
+      "fix": "Compile bl.c's jump_to_app() with stubs, or add a check that the copied logic still matches PX4 at the pin. Label BOARD_FLASH_SIZE as an assumption retired by TC-12, and add a headroom check on image size."
+    },
+    {
+      "id": "A-12",
+      "severity": "medium",
+      "title": "A2-01 (every signed U-Boot measures) has no owner and no control",
+      "repo": "P2 (seam with P3, P4)",
+      "claim": "docs/01-scope-and-trace.md:47 A2-01 'Every u-boot.itb ever signed with K-CC-ROOT contains a U-Boot with measured boot enabled'",
+      "observation": "A2-01's own rationale says that if it fails, a signed U-Boot that does not measure lets the kernel extend approved values itself and unseal the keys. No requirement, test case, open item or owner retires or enforces it. cc/build.sh checks the emulated build's .config, not what K-CC-ROOT signs, and HAB signing is an MSS step in P3 or P4.",
+      "evidence": "[verified] P2 docs/01:43-52 (no retiring TC or OI for A2-01); P2 data/testcases.csv; P1 data/requirements.csv has no MSS requirement on what the boot key may sign.",
+      "fix": "Give A2-01 an owner (P3 or P4) and a control: the MSS step that HAB-signs u-boot.itb refuses a build whose .config lacks MEASURED_BOOT, verified by a test. Propose the matching P1 requirement or rationale change."
+    },
+    {
+      "id": "A-13",
+      "severity": "medium",
+      "title": "P2's hand-offs to P3 (OI2-04, OI2-05, K-CC-POL) are not recorded in P1",
+      "repo": "P1 (seam with P2 and P3)",
+      "claim": "P1 docs/01-system-description.md:36 'Software signing keys | Defined in P2 and P3 | ... | Candidate for the FC: PX4 Bootloader Secure Boot (Ed25519)'",
+      "observation": "P2 defines five signing keys (K-CC-ROOT, K-CC-OS, K-CC-POL, K-FC-FW, K-FC-REC) and hands P3 three obligations: OI2-04, a PKCS#11 Ed25519 signer, without which SR-034 cannot hold for K-FC-FW; OI2-05, MSS-authorized epoch commit; and K-CC-POL custody. None appears in P1: the key table still calls PX4 secure boot a 'candidate', and P1's open items list only OI-01 to OI-03 and DD-06 (P1 README.md:11-19). P3, which plans from P1, inherits these only through P2's docs.",
+      "evidence": "[verified] grep of P1 main for OI2, PKCS#11, epoch and K-CC-POL: no match.",
+      "fix": "Propose a P1 change, as P2 did for changes 1 to 5: record P2's key table in P1 docs/01 §1.3 and add OI2-04 and OI2-05 (and A-01's removal case) as P1 open items owned by P3."
+    },
+    {
+      "id": "A-14",
+      "severity": "medium",
+      "title": "No path to put a new or MSS-generated key into a fielded CC's TPM (SR-036)",
+      "repo": "P2, P1 (seam with P3)",
+      "claim": "P2 docs/03-measured-boot-sealing.md:3 'sealed once'; docs/03:73 'Re-sealing on the CC during an update was rejected. It needs the keys in the clear on a running system'; P1 data/requirements.csv:37 SR-036 'The MSS shall provision a new MAVLink signing key to the FC, CC and GCS after any loss of physical custody of a key holder'; P1 docs/01-system-description.md:35 WireGuard keys 'Generated by the MSS and loaded over wired links'",
+      "observation": "SR-036 requires a new MAVLink key to reach the CC after any loss of custody, and P1 has the MSS generate the CC's WireGuard key and load it. P2 seals once at the factory (emulated by the harness creating the key next to the TPM, tests/ve07/provision.py:183-191) and gives no way to put a new or MSS-generated key into a fielded CC's TPM without having it in clear on the CC. An MSS-wrapped key imported into the TPM would do this. No repo owns that path.",
+      "evidence": "[verified] P2 docs/03, docs/05 and tests/ve07/provision.py; P1 requirements and docs as cited.",
+      "fix": "Define the provisioning and re-key path, for example an MSS-side duplication of each key to the CC's parent public key followed by TPM2_Import on the CC, so no plaintext key exists on the CC. Assign it (P2 or P3), and add a test case for re-keying under SR-036."
+    },
+    {
+      "id": "A-15",
+      "severity": "low",
+      "title": "docs/06 says every CI item is 'proved', beyond what the tests show",
+      "repo": "P2",
+      "claim": "docs/06-verification.md:18 'Every CI item is now proved'; docs/06-verification.md:24 'the sealing policy logic: approved state only, signed approval, epoch anti-rollback, sealed objects bound to one TPM, encrypted unseal'",
+      "observation": "'Proved' overstates two of the five sealing properties. Epoch anti-rollback is shown only against an honest older chain (A-01). Encrypted unseal is shown, but the salt that SR-010.4 requires is not tested (A-04). 'Approved state only' holds only until the first unseal (A-02).",
+      "evidence": "A-01, A-02, A-04.",
+      "fix": "State what each CI item shows and under which condition; link the open findings until they are closed."
+    },
+    {
+      "id": "A-16",
+      "severity": "low",
+      "title": "U-Boot binaries are not bit-reproducible between CI and a pinned local host",
+      "repo": "P2",
+      "claim": "cc/build.sh:13-14 'Every download is checked against a pinned SHA-256'; cc/uboot/pin.txt:8-10 (fixed SOURCE_DATE_EPOCH)",
+      "observation": "A local build in p2-noble with every host package at its pin reproduces CI byte for byte for Image.gz, both initramfs images, both agents, mkenvimage and all six .config files. It does not reproduce the six U-Boot binaries or mkimage. The predicted PCRs 0, 1, 8 and 9 are identical, so the measured state reproduces. Local rebuilds are identical to each other across paths and times. The cause of the CI difference was not found. The CI runner image carries compilers outside the pins (gcc-12, gcc-14 in toolchain.txt). For the hardware phase, where HAB signs u-boot.itb, an independent rebuild should give the same bytes.",
+      "evidence": "[verified] experiments/results via repro.py, repro2.sh, repro3.sh: 12 same, 7 differ; PCRs same; local hash 7fd6e136... at two paths; CI ef5af6bd...",
+      "fix": "Diff a CI-built and a local u-boot.bin (upload the CI binary as an artifact once) to find the input that differs, then pin or neutralize it. Until then, docs should say that U-Boot binaries are not yet bit-reproducible across hosts."
+    },
+    {
+      "id": "A-17",
+      "severity": "low",
+      "title": "The VE-07 and VE-08 host package lists cannot coexist on one host",
+      "repo": "P2",
+      "claim": "tests/ve08/README.md:29 'cc/emu/install-host-packages.sh fc/host-packages.txt'; tests/ve07/README.md:14 'cc/emu/install-host-packages.sh'",
+      "observation": "On Ubuntu 24.04 the two pinned package lists conflict. Installing fc/host-packages.txt (gcc-multilib) removed gcc-aarch64-linux-gnu and gcc-13-aarch64-linux-gnu from p2-noble on 2026-10-13 at 00:19:42, after which cc/build.sh cannot build. CI never sees this because the two workflows run on separate runners. Someone following both READMEs on one machine is left with a broken VE-07 setup and no warning.",
+      "evidence": "[verified] p2-noble /var/log/apt/history.log: 'Remove: gcc-13-aarch64-linux-gnu:amd64 (...), gcc-aarch64-linux-gnu:amd64 (...)' in the fc install; this audit reinstalled the VE-07 pins (experiments/setup.sh).",
+      "fix": "Say so in both READMEs and in docs/references.md, and give the order to restore. Or run TC-11's host checker in a container so the two sets never share a host."
+    },
+    {
+      "id": "A-18",
+      "severity": "medium",
+      "title": "TPM reset only at power-on conflicts with the update flow's 'Reboot'; emulation hides it",
+      "repo": "P2 (seam with P3)",
+      "claim": "docs/02-cc-boot-chain.md:99 DD2-17 'With power-on reset only, a warm reboot keeps the old PCRs, so the next boot's measurements do not match and unseal fails closed until a power cycle'; docs/03-measured-boot-sealing.md:69 update step 3 'Reboot: the new chain unseals with the new policy'; cc/uboot/qemu.config:4 (reset on any failure)",
+      "observation": "On the DEBIX design the TPM is reset only at power-on, so after any warm reset, including the reboot in the update flow and the reset U-Boot does after a refused boot, the keys cannot unseal until the board is power-cycled. The update flow says 'Reboot' and expects the new chain to unseal. The emulated chain does not model this: QEMU resets the emulated TPM with the machine, so no VE-07 case can show it. The difference is missing from the emulation table (docs/02 §2.4).",
+      "evidence": "[analysis] DD2-17 as written; QEMU's TPM backend resets the TPM on machine reset (not demonstrated here).",
+      "fix": "Make update step 3 a power cycle, or a reset that also resets the TPM, and tell P3's update acceptance (SR-007). Add the difference to the docs/02 §2.4 table and a hardware test case for unseal after a warm reset."
+    },
+    {
+      "id": "A-19",
+      "severity": "low",
+      "title": "docs/01 names P1 commit 83c6d2d; the snapshot is at e539aa6",
+      "repo": "P2",
+      "claim": "docs/01-scope-and-trace.md:3 'Every other P2 statement traces to P1 at commit 83c6d2d: baseline 1.0 plus change 1'",
+      "observation": "The snapshot is pinned to e539aa6 (data/p1/pin.txt:4; README.md:18), which includes changes 2 to 5.",
+      "evidence": "[verified]",
+      "fix": "Say e539aa6, or point to data/p1/pin.txt instead of naming a commit."
+    },
+    {
+      "id": "A-20",
+      "severity": "low",
+      "title": "Evidence column: folder in docs/06, file in the CSV",
+      "repo": "P2",
+      "claim": "docs/06-verification.md:61 'A test case's evidence column points at that folder'",
+      "observation": "data/testcases.csv cites .../summary.md, a file. The validator accepts either (A-07).",
+      "evidence": "[verified] data/testcases.csv:2-12",
+      "fix": "Pick one form and enforce it (with A-07)."
+    },
+    {
+      "id": "A-21",
+      "severity": "low",
+      "title": "tests/ve07/README: stale variant count; local runs written into evidence/ve07-ci/",
+      "repo": "P2",
+      "claim": "tests/ve07/README.md:15 'U-Boot hardened, stock and two control variants'; tests/ve07/README.md:16 '--out evidence/ve07-ci/$(date -u +%Y%m%d)-$(git rev-parse --short HEAD)'",
+      "observation": "cc/build.sh builds six variants, including the two TC-06 test builds. The documented local command writes a local run into evidence/ve07-ci/, the folder whose name means a CI artifact (docs/06:66). Its summary says 'local', but the folder name does not.",
+      "evidence": "[verified] cc/build.sh:3-9, 52",
+      "fix": "Say six variants. Point the local command at a scratch folder, or at evidence/ve07-local/."
+    },
+    {
+      "id": "A-22",
+      "severity": "low",
+      "title": "docs/05 says PX4's test key is used only in TC-13; TC-11 uses it too",
+      "repo": "P2",
+      "claim": "docs/05-key-management.md:28 'P2 uses it only as the wrong-key case (TC-13)'",
+      "observation": "TC-11 also uses PX4's public test key as its wrong key (fc/build.sh:39-40; docs/04:54).",
+      "evidence": "[verified]",
+      "fix": "Say TC-11 and TC-13."
+    },
+    {
+      "id": "A-23",
+      "severity": "low",
+      "title": "docs/03 says TC-05 to TC-10 reproduced all prototype findings; two are not",
+      "repo": "P2",
+      "claim": "docs/03-measured-boot-sealing.md:85 'They are not evidence; TC-05 to TC-10 have since reproduced them'",
+      "observation": "Two of the six prototype findings are not reproduced by any test case. 'It unsealed for the next epoch before commit': TC-08b unseals release 2 only after the commit. 'swtpm 0.7.3 rejected an RSA-3072 public key for TPM2_LoadExternal' is not a test case at all.",
+      "evidence": "[verified] tests/ve07/boot_cases.py:799-811",
+      "fix": "Name which findings each test case reproduces, and mark the two others as prototype-only."
+    },
+    {
+      "id": "A-24",
+      "severity": "medium",
+      "title": "DD2-14's recovery key is neither built nor tested; TC-14 cannot fail as written",
+      "repo": "P2",
+      "claim": "docs/04-fc-secure-boot.md:39 'K-FC-FW lost | Sign with K-FC-REC. The firmware build's TOC must name slot 1, which needs a P2 variant of toc.c'; docs/04:61 DD2-14; data/testcases.csv:15 TC-14 pass criteria 'Each step returns the board to the intended state'",
+      "observation": "DD2-14's recovery key is neither built nor tested. fc/build.sh sets only PUBLIC_KEY0, so the CI boot loader has no slot 1; the toc.c variant does not exist; and TC-14's procedure (USB re-upload, key change over SWD, stock boot loader) never signs with K-FC-REC. TC-14's criterion cannot fail as written, because 'the intended state' is not defined.",
+      "evidence": "[verified] fc/build.sh:29-30; P2 tree has no toc.c variant; data/testcases.csv:15",
+      "fix": "Either build the slot-1 path (boot loader with PUBLIC_KEY1, a toc.c variant, an image signed with K-FC-REC) and add it to TC-11 and TC-14, or withdraw DD2-14 to 'SWD is the only recovery'. Rewrite TC-14's criterion per step: which image runs, which key slot the boot loader reports."
+    },
+    {
+      "id": "A-25",
+      "severity": "low",
+      "title": "The parent-name check trusts a file on unprotected storage; its purpose is untested",
+      "repo": "P2",
+      "claim": "docs/03-measured-boot-sealing.md:31 'Its name is recorded at provisioning, and the unseal agent refuses any other key'; cc/initramfs/p2-unseal.c:205-209",
+      "observation": "The agent compares the parent's name with parent.name, which lives on the same unsigned, unmeasured CC storage as everything else the agent reads (p2-unseal.c:10). Anyone who can substitute the parent on the bus can also rewrite that file on a captured vehicle, so the check holds only while storage is intact. Removing the check entirely leaves the keys refused (at Load). TC-07a goes red only because the refusal moves to a different step; nothing tests what the check is for.",
+      "evidence": "M08 (experiments/results/M08-noparentcheck.txt): TC-07a fails on the step label; keys refused at Load; TC-07b unchanged.",
+      "fix": "Either carry the expected parent name somewhere measured or signed, or state in docs/03 §3.2 and §3.6 that the check guards only against an interposer on an intact CC, and leave active interposers to P5 as §3.6 already does."
+    },
+    {
+      "id": "A-26",
+      "severity": "low",
+      "title": "CI path filters miss files the harnesses import or run",
+      "repo": "P2",
+      "claim": ".github/workflows/ve08-host.yml:51-53 (paths); .github/workflows/ve07-emu.yml:7-9 (paths)",
+      "observation": "ve08-host does not run when tests/ve07/boot_cases.py changes, though image_cases.py imports its provenance helpers (tests/ve08/image_cases.py:47-48). ve07-emu runs tools/check_no_secrets.py on its evidence but does not run when that file changes. Neither runs when data/testcases.csv changes. Prior finding P2-06, narrowed.",
+      "evidence": "[verified]",
+      "fix": "Add the imported and invoked files to each path filter, or drop the filters."
+    },
+    {
+      "id": "A-27",
+      "severity": "low",
+      "title": "The secret scanner's fallback flags its own compiled test (2026-10-09 P2-13)",
+      "repo": "P2",
+      "claim": "docs/05-key-management.md:25 '`tools/check_no_secrets.py` scans every tracked and untracked, non-ignored file'; tools/check_no_secrets.py:38-39",
+      "observation": "Outside a git checkout the fallback scans everything except .git. After the unit tests run, it reports the compiled test file as a PEM and a PX4 private key (CPython folds the split strings back together), and it scans a local keys/ folder that .gitignore excludes. Prior finding P2-13 is still open.",
+      "evidence": "D4: on a git-archive copy, after python -m unittest: 'tests\\__pycache__\\test_check_no_secrets.cpython-312.pyc: PEM private key', '...: PX4 secure-boot private key'.",
+      "fix": "In the fallback, skip __pycache__, *.pyc and the .gitignore patterns. In the test, build the patterns at run time (for example from bytes.fromhex) so they are not folded."
+    },
+    {
+      "id": "A-28",
+      "severity": "low",
+      "title": "Stale reference link, misdescribed snapshot mechanism, unexplained U-Boot log lines",
+      "repo": "P2",
+      "claim": "docs/references.md:15 U-Boot link 'https://source.denx.de/u-boot/u-boot'; docs/references.md:75 'apt-get update --snapshot'",
+      "observation": "Three items from 2026-10-09 are still open. P2-19: the link is stale and no note says v2026.10 exists. P2-20: install-host-packages.sh writes a deb822 source for snapshot.ubuntu.com and does not use `apt-get update --snapshot`. P2-21: every U-Boot log starts with 'Bloblist at 0 not found' and 'alloc space exhausted', and nothing explains them.",
+      "evidence": "[verified] cc/emu/install-host-packages.sh:17-25; every TC log in evidence/ve07-ci/20261013-d9149f6/",
+      "fix": "As proposed on 2026-10-09 (P2-19 to P2-21)."
+    },
+    {
+      "id": "A-29",
+      "severity": "low",
+      "title": "Assumptions in P1 and P2 have no owner or retiring test",
+      "repo": "P1, P2",
+      "claim": "P1 docs/03-assumptions.md:3 'If one is invalidated, everything that cites it is re-examined'; P2 docs/01-scope-and-trace.md:43 'Test cases or open items retire them'",
+      "observation": "P1's 14 assumptions have IDs and rationales, but no owner and no way to be retired or checked. P2's six have no owner column either. A2-01 has no retiring test or open item (A-12), and A2-02 is retired 'on the module bought' with no test case.",
+      "evidence": "[verified]",
+      "fix": "Add owner and 'retired by' columns to both tables."
+    },
+    {
+      "id": "A-30",
+      "severity": "low",
+      "title": "P7 is assigned work in P1 but not defined or allocated",
+      "repo": "P1",
+      "claim": "P1 README.md:5 'P1 is the anchor for five follow-on repos, P2–P6'; P1 docs/04-architecture.md:215 DD-04 'P4 builds it and P7 fuzzes it'",
+      "observation": "P1 assigns fuzzing of the CC command filter to a P7 it does not otherwise define. No requirement or verification event is allocated to P7, and the memory-safe-language commitment in DD-04 has no requirement. The portfolio profile describes P7 as optional fuzzing of 'a MAVLink or CAN parser'. Prior findings P1-03 and P1-04 are still open.",
+      "evidence": "[verified] P1 main; samyoon727ca/README.md:13",
+      "fix": "As proposed on 2026-10-09: name P7 in P1 with its scope and an owning requirement, or move the fuzzing commitment to P4."
+    },
+    {
+      "id": "A-31",
+      "severity": "low",
+      "title": "P1 findings of 2026-10-09 still open (P1-01, -02, -06 to -15)",
+      "repo": "P1",
+      "claim": "Several, see observation",
+      "observation": "Open from 2026-10-09, re-checked on e539aa6. P1-01: brief/pdr-brief.md:29 'every number here is generated' (numbers are typed). P1-02: README.md:76-87 attributes drift and SysML checks to validate_trace.py. P1-07: docs/05-threat-model.md:108 THR-016/019 row omits SR-036 and P3. P1-08: README.md:24 'all 40 data-flow-diagram elements' (46 elements, 40 STRIDE elements). P1-09: the committed brief PDF is never compared with CI's. P1-10: python, java and node float by major version in validate.yml. P1-11: brief/package-lock.json:1256-1258 pins deprecated @xmldom/xmldom 0.9.10. P1-12: docs/references.md:32-42 rows without versions. P1-13: data/README.md omits gen_sysml.py. P1-14: model/sysml/README.md:30 'Java 21 only'. P1-15: README.md:15 'Closed by VE-02' under 'Still open'. P1-06 (README evidence-table 'Planned' column) also stands.",
+      "evidence": "[verified] grep of P1 main for each cited line",
+      "fix": "As proposed on 2026-10-09; each item's fix is in _work/phase12/results/audit-p1.json."
+    },
+    {
+      "id": "A-32",
+      "severity": "low",
+      "title": "Several P1 verification events have criteria that cannot fail",
+      "repo": "P1",
+      "claim": "P1 data/verification.csv:3 VE-02, :6 VE-05, :7 VE-06, :9 VE-08, :10 VE-09",
+      "observation": "Pass criteria that cannot fail or are underspecified. VE-02's procedure measures post-reboot replay, but its criteria say nothing about replay. VE-05's 'unreadable' has no test behind it. VE-06's 'follows the defined order' cites no definition. VE-08's 'Only the signed image starts PX4' does not name the key, and its procedure omits a wrong-key image. VE-09 bundles six requirements and its watchdog criterion has no time bound. Method fit: SR-003 (signing) and SR-034 (HSM non-export) are verified by Demonstration only.",
+      "evidence": "[verified] P1 data/verification.csv",
+      "fix": "Give each criterion an observable outcome that can fail (for VE-05, a decryption with the wrong key that must fail; for VE-02, a stated replay result). Split VE-09 per requirement, or record per-requirement results inside it."
+    },
+    {
+      "id": "A-33",
+      "severity": "low",
+      "title": "P1 has no .gitattributes; Windows checkouts get CRLF",
+      "repo": "P1",
+      "claim": "P1 repo root (no .gitattributes)",
+      "observation": "P1 has no .gitattributes. On this machine (core.autocrlf=true), git archive and checkouts write CRLF, and P1's own render_views.py writes CRLF on Windows. P2 fixed the same problem for itself (P2-12).",
+      "evidence": "[verified] a git archive export of P1 main had CRLF CSVs; the blobs themselves are LF and identical to P2's snapshot.",
+      "fix": "Add '* text=auto eol=lf' as P2 did."
+    },
+    {
+      "id": "A-34",
+      "severity": "low",
+      "title": "The harness's 'modified' flag ignores tools/, which it imports",
+      "repo": "P2",
+      "claim": "tests/ve07/boot_cases.py:943 git_state 'cc_or_tests_modified' (status of cc and tests only)",
+      "observation": "The harness imports tools/predict_pcrs.py and tools/approve_policy.py, but the 'modified' flag in summary.json ignores tools/. A local run with a modified predictor would report 'cc/ or tests/ modified: false'. CI is unaffected because its checkout is clean.",
+      "evidence": "[verified]",
+      "fix": "Include tools/ (and fc/ for VE-08) in the status check."
+    },
+    {
+      "id": "A-35",
+      "severity": "info",
+      "title": "Checked and sound: evidence, snapshot, baseline, most mutations",
+      "repo": "P2",
+      "claim": "README.md:14; evidence/README.md:5-12; data/p1/pin.txt",
+      "observation": "Checked and sound. All six evidence folders are byte-identical to their GitHub artifacts. The P1 snapshot equals P1 at e539aa6, which is P1 main. validate_trace.py, render_views.py --check and check_no_secrets.py pass on main. The full VE-07 harness passes 31 of 31 runs locally. Most single-point mutations turn a test red: M01, M02, M03, M04a, M05, M06, plus the shared-constant mutations of §2.2 that have a negative case.",
+      "evidence": "experiments/results/ and report §2, §4",
+      "fix": "None."
+    }
+  ]
+}
