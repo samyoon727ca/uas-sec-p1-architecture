@@ -1,6 +1,6 @@
 # 8. Verification plan
 
-Every one of the 44 requirements is covered by at least one of 16 verification events. Each event uses the same method and evidence repo as the requirements it verifies, and the validator enforces that. All events are planned. Their results arrive as P2–P6 produce evidence. When an event passes or fails, its row in `verification.csv` links the evidence at a pinned commit in the repo that produced it, and the Status column in §8.1 links to it.
+Every one of the 45 requirements is covered by at least one of 17 verification events. Each event uses the same method and evidence repo as the requirements it verifies, and the validator enforces that. All events are planned. Their results arrive as P2–P6 produce evidence. When an event passes or fails, its row in `verification.csv` links the evidence at a pinned commit in the repo that produced it, and the Status column in §8.1 links to it.
 
 The events live in [`data/verification.csv`](../data/verification.csv), with their procedures and pass criteria. Each requirement in [`data/requirements.csv`](../data/requirements.csv) names a verification method and the repo that produces the evidence:
 
@@ -9,7 +9,7 @@ The events live in [`data/verification.csv`](../data/verification.csv), with the
 - **D**, Demonstration
 - **T**, Test
 
-**SITL harness.** VE-01 and VE-02 run in a PX4 software-in-the-loop (SITL) harness hosted in **P3**. P3 owns MAVLink key provisioning, so the signed-C2 demo belongs there, and the heartbeat test reuses the same setup. P5 covers hardware testing on owned devices and does not need SITL.
+**SITL harness.** VE-01, VE-02 and VE-17 run in a PX4 software-in-the-loop (SITL) harness hosted in **P3**. P3 owns MAVLink key provisioning, so the signed-C2 demo belongs there, and the heartbeat test reuses the same setup. P5 covers hardware testing on owned devices and does not need SITL.
 
 *Assumption: SITL builds support signing. PX4 stores the key under the board's root path (`CONFIG_BOARD_ROOT_PATH` in `mavlink_sign_control.h`), which suggests they do. Confirming this is P3's first step.*
 
@@ -18,7 +18,7 @@ The events live in [`data/verification.csv`](../data/verification.csv), with the
 Generated from the CSVs by `tools/render_views.py`. CI fails if this view drifts from the data. The requirements table in [§7](07-requirements.md) shows the reverse mapping, in its "Verified by" column.
 
 <!-- BEGIN GENERATED: verification-events -->
-16 verification events: 16 planned.
+17 verification events: 17 planned.
 
 | ID | Event | Method | Evidence | Verifies | Status | Pass criteria |
 |---|---|---|---|---|---|---|
@@ -38,6 +38,7 @@ Generated from the CSVs by `tools/render_views.py`. CI fails if this view drifts
 | VE-14 | FC parameter baseline | I | P6 | SR-020, SR-021, SR-022 | planned | Bits 9 and 11 are set; NAV_TRAFF_AVOID is 0 or 1; uXRCE-DDS is disabled; only the CC-link MAVLink instance is enabled besides USB. |
 | VE-15 | GCS configuration | I | P6 | SR-026, SR-027, SR-029, SR-030 | planned | Individual logins and screen lock are enforced; the disk is encrypted; only the ground-radio interface is enabled; each sortie record names its operator. |
 | VE-16 | MSS configuration and records | I | P6 | SR-039, SR-040, SR-041, SR-042, SR-043 | planned | Individual logins; every load and provisioning action is logged with a maintainer; peripheral versions are recorded against the baseline; GCS keys are provisioned wired; key operations happen offline. |
+| VE-17 | GCS refuses to arm a vehicle with older FC firmware | T | P3 | SR-045 | planned | With the older version the GCS alerts the operator and the vehicle stays disarmed; with the approved version it arms. |
 <!-- END GENERATED: verification-events -->
 
 VE-01 and VE-02 are written out in full below, because they close the architecture's open items (OI-01) and its priority threats (THR-001, THR-027, THR-057).

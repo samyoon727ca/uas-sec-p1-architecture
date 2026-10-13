@@ -3,7 +3,7 @@
 A SysML v2 textual model of P1, validated in CI against the OMG reference implementation:
 
 - [`uas_architecture.sysml`](uas_architecture.sysml) is written by hand. It holds the structure, ports, data flows and trust boundaries of [§4](../../docs/04-architecture.md).
-- [`uas_security.sysml`](uas_security.sysml) is **generated** from [`data/`](../../data/) by `tools/gen_sysml.py`. It holds the 65 threats, 44 requirements and 16 verification events of §5, §7 and §8.
+- [`uas_security.sysml`](uas_security.sysml) is **generated** from [`data/`](../../data/) by `tools/gen_sysml.py`. It holds the 66 threats, 45 requirements and 17 verification events of §5, §7 and §8.
 
 Both files validate on the OMG SysML v2 Pilot Implementation with 0 errors and 0 warnings.
 

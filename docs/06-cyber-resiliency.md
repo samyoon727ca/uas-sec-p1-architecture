@@ -47,7 +47,7 @@ Generated from the CSVs by `tools/render_views.py`. CI fails if this view drifts
 | Realignment | Restriction | SR-011, SR-014, SR-021, SR-022, SR-024, SR-029 |
 | Redundancy | Protected Backup and Restore | SR-035 |
 | Segmentation | Predefined Segmentation | SR-001, SR-002, SR-009, SR-022, SR-029, SR-038 |
-| Substantiated Integrity | Integrity Checks | SR-003, SR-005, SR-006, SR-007, SR-010, SR-015, SR-018, SR-020, SR-023, SR-041 |
+| Substantiated Integrity | Integrity Checks | SR-003, SR-005, SR-006, SR-007, SR-010, SR-015, SR-018, SR-020, SR-023, SR-041, SR-045 |
 | Substantiated Integrity | Provenance Tracking | SR-007, SR-018, SR-028, SR-031, SR-033 |
 <!-- END GENERATED: resiliency-approaches -->
 

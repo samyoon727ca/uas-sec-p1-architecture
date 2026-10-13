@@ -25,7 +25,7 @@ package UAS_Security {
         attribute evidenceRepo : String;
     }
 
-    // 65 threats (docs/05-threat-model.md)
+    // 66 threats (docs/05-threat-model.md)
     concern 'THR-001' : Threat {
         doc /* Spoofed GCS heartbeats suppress the data-link-loss failsafe. PX4 accepts HEARTBEAT unsigned on every link and derives GCS liveness from MAV_TYPE_GCS heartbeats. While the real GCS link is jammed or down, an adversary who can deliver MAVLink to any FC link impersonates the GCS, so the data-link-loss failsafe (DD-05) never triggers and the vehicle flies on without C2 or automatic return. Residual after SR-001: a compromised CC or GCS, both already inside the C2 trust base. */
         attribute :>> missionImpact = MissionImpact::'MI-1';
@@ -484,8 +484,15 @@ package UAS_Security {
         attribute :>> disposition = Disposition::'mitigate';
     }
     dependency from 'THR-065' to UAS_Architecture::'DF-04';
+    concern 'THR-066' : Threat {
+        doc /* Older signed FC firmware loaded through the USB bootloader. With physical access to the FC's USB port, an adversary loads an older FC firmware release that the project signed, reintroducing a flaw a later release fixed. SR-018 does not stop it: PX4 Bootloader Secure Boot checks only the signature, and the bootloader never reads the creation and expiry dates in image_cert_t (P2 docs/04). Residual after SR-045: the downgrade is detected before arming, not prevented. */
+        attribute :>> missionImpact = MissionImpact::'MI-1';
+        attribute :>> stride = StrideCategory::'tampering';
+        attribute :>> disposition = Disposition::'mitigate';
+    }
+    dependency from 'THR-066' to UAS_Architecture::'DF-11';
 
-    // 44 requirements (docs/07-requirements.md)
+    // 45 requirements (docs/07-requirements.md)
     requirement 'SR-001' : SecurityRequirement {
         doc /* The CC shall discard all traffic on its radio interface except WireGuard traffic from the provisioned GCS peer. */
         comment rationale /* Keeps RF-injected MAVLink, including the four messages PX4 accepts unsigned, from reaching the MAVLink router or the FC (THR-001). Verified by VE-01. */
@@ -945,8 +952,17 @@ package UAS_Security {
         attribute :>> resiliencyApproach = ("Privilege Restriction: Trust-Based Privilege Management");
     }
     satisfy 'SR-044' by UAS_Architecture::uasSystem.airVehicle.missionComputing.cc;
+    requirement 'SR-045' : SecurityRequirement {
+        doc /* The GCS shall alert the operator and refuse to arm the vehicle when the FC reports firmware older than the minimum approved release. */
+        comment rationale /* PX4 Bootloader Secure Boot has no rollback check, so an older release signed with the project firmware key still boots (THR-066). PX4 reports its firmware version in AUTOPILOT_VERSION, so before each arming the GCS can compare it with the minimum release the MSS approved. This detects a downgrade before flight; it does not prevent the load. */
+        frame 'THR-066';
+        attribute :>> method = VerificationMethod::'test';
+        attribute :>> evidenceRepo = "P3";
+        attribute :>> resiliencyApproach = ("Substantiated Integrity: Integrity Checks");
+    }
+    satisfy 'SR-045' by UAS_Architecture::uasSystem.groundSegment.gcs;
 
-    // 16 verification events (docs/08-verification-plan.md)
+    // 17 verification events (docs/08-verification-plan.md)
     verification 'VE-01' : SecurityVerification {
         doc /* Spoofed GCS heartbeats do not suppress the data-link-loss failsafe. Pass: FC enters Return within COM_DL_LOSS_T plus a stated tolerance; CC and GCS counters show injected packets dropped; control run shows the failsafe suppressed. */
         objective {
@@ -1102,5 +1118,13 @@ package UAS_Security {
         }
         attribute :>> method = VerificationMethod::'inspection';
         attribute :>> evidenceRepo = "P6";
+    }
+    verification 'VE-17' : SecurityVerification {
+        doc /* GCS refuses to arm a vehicle with older FC firmware. Pass: With the older version the GCS alerts the operator and the vehicle stays disarmed; with the approved version it arms. */
+        objective {
+            verify 'SR-045';
+        }
+        attribute :>> method = VerificationMethod::'test';
+        attribute :>> evidenceRepo = "P3";
     }
 }

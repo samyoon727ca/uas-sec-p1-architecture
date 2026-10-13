@@ -1,6 +1,6 @@
 # 5. Threat model
 
-The threat model covers every STRIDE element of the architecture: 65 threats on 40 elements. 62 threats are mitigated by derived requirements and 3 are accepted. 41 are rated MI-1, and most of those end the same way: an adversary holds the shared MAVLink signing key, or runs code on a node that holds it. That is the architecture's central weakness (§4.2). It is why the requirements concentrate on the CC (15 of 44) and on keeping code and keys trustworthy (P2, P3, P4).
+The threat model covers every STRIDE element of the architecture: 66 threats on 40 elements. 63 threats are mitigated by derived requirements and 3 are accepted. 42 are rated MI-1, and most of those end the same way: an adversary holds the shared MAVLink signing key, or runs code on a node that holds it. That is the architecture's central weakness (§4.2). It is why the requirements concentrate on the CC (15 of 45) and on keeping code and keys trustworthy (P2, P3, P4).
 
 The data lives in [`data/threats.csv`](../data/threats.csv). Mitigating requirements are in [`data/requirements.csv`](../data/requirements.csv), and the links between them are in [`data/trace.csv`](../data/trace.csv).
 
@@ -46,7 +46,7 @@ So a threat that ends with full C2 rates MI-1 however hard it is to carry out. P
 Generated from the CSVs by `tools/render_views.py`. CI fails if this view drifts from the data.
 
 <!-- BEGIN GENERATED: threat-matrix -->
-65 threats on 40 STRIDE elements: 41 MI-1, 16 MI-2, 6 MI-3, 2 MI-4; 62 mitigated, 3 accepted.
+66 threats on 40 STRIDE elements: 42 MI-1, 16 MI-2, 6 MI-3, 2 MI-4; 63 mitigated, 3 accepted.
 
 Blank: applicable, no threat recorded. –: category does not apply to the element type.
 
@@ -85,7 +85,7 @@ Blank: applicable, no threat recorded. –: category does not apply to the eleme
 | DF-08 Navigation data | Data flow | – | THR-055 | – |  |  | – |
 | DF-09 Actuator commands | Data flow | – | THR-056 | – |  |  | – |
 | DF-10 Operator input (rationale) | Data flow | – |  | – |  |  | – |
-| DF-11 FC maintenance load | Data flow | – | THR-057, THR-058 | – |  |  | – |
+| DF-11 FC maintenance load | Data flow | – | THR-057, THR-058, THR-066 | – |  |  | – |
 | DF-12 CC maintenance load | Data flow | – | THR-059 | – |  |  | – |
 | DF-13 GCS provisioning | Data flow | – |  | – | THR-060 |  | – |
 | DF-14 CC data offload | Data flow | – | THR-061 | – |  |  | – |
