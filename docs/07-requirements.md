@@ -1,6 +1,6 @@
 # 7. Requirements
 
-There are 44 derived "shall" requirements, each closing at least one threat in [§5](05-threat-model.md). They are allocated to four components: CC 15, MSS 13, FC 9 and GCS 7. Verification methods are Test 23, Inspection 13 and Demonstration 8. The evidence is spread across the follow-on repos, with most of it in P3, P4 and P6.
+There are 45 derived "shall" requirements, each closing at least one threat in [§5](05-threat-model.md). They are allocated to four components: CC 15, MSS 13, FC 9 and GCS 8. Verification methods are Test 24, Inspection 13 and Demonstration 8. The evidence is spread across the follow-on repos, with most of it in P3, P4 and P6.
 
 The data lives in [`data/requirements.csv`](../data/requirements.csv), with parent threats in [`data/trace.csv`](../data/trace.csv). Column rules are in [`data/README.md`](../data/README.md).
 
@@ -23,7 +23,7 @@ The data lives in [`data/requirements.csv`](../data/requirements.csv), with pare
 Generated from the CSVs by `tools/render_views.py`. CI fails if this view drifts from the data.
 
 <!-- BEGIN GENERATED: requirements-table -->
-44 requirements. Evidence: P2 3, P3 13, P4 14, P5 2, P6 12.
+45 requirements. Evidence: P2 3, P3 14, P4 14, P5 2, P6 12.
 
 | ID | Requirement | Allocated to | Method | Evidence | Verified by | Parent threats |
 |---|---|---|---|---|---|---|
@@ -71,4 +71,5 @@ Generated from the CSVs by `tools/render_views.py`. CI fails if this view drifts
 | SR-042 | The MSS shall provision GCS keys over a direct wired connection and never through removable media. | CMP-MSS | I | P6 | VE-16 | THR-060 |
 | SR-043 | The MSS shall generate and provision keys only while disconnected from external networks. | CMP-MSS | I | P6 | VE-16 | THR-023, THR-039 |
 | SR-044 | The CC shall accept maintenance connections only when authenticated with the MSS maintenance key. | CMP-CC | T | P4 | VE-09 | THR-059 |
+| SR-045 | The GCS shall alert the operator and refuse to arm the vehicle when the FC reports firmware older than the minimum approved release. | CMP-GCS | T | P3 | VE-17 | THR-066 |
 <!-- END GENERATED: requirements-table -->

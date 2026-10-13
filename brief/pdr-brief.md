@@ -4,7 +4,7 @@ theme: default
 size: 16:9
 paginate: true
 header: 'P1 · Security architecture and requirements · notional small UAS'
-footer: 'Notional and unclassified · public sources only · status 2026-10-02'
+footer: 'Notional and unclassified · public sources only · status 2026-10-13'
 style: |
   section { font-size: 23px; padding: 50px 60px; }
   h1 { font-size: 40px; color: #1a3d5c; }
@@ -69,11 +69,11 @@ A PX4 flight controller, a Linux companion computer, a ground control station an
 
 ---
 
-## 4. Threat model: 65 threats, STRIDE per element
+## 4. Threat model: 66 threats, STRIDE per element
 
 - **Coverage:** 40 elements, using Microsoft's STRIDE-per-element chart, which the validator enforces.
 - **Framework mapping:** EMB3D v2.0.2 (43 threats) and ATT&CK for ICS v19.2 (52). IDs are checked against pinned catalogs, so revoked IDs fail.
-- **Impact, consequence only:** 41 MI-1 · 16 MI-2 · 6 MI-3 · 2 MI-4. 62 mitigated, 3 accepted with rationale.
+- **Impact, consequence only:** 42 MI-1 · 16 MI-2 · 6 MI-3 · 2 MI-4. 63 mitigated, 3 accepted with rationale.
 
 | Priority threat | Impact | Mitigated by |
 |---|---|---|
@@ -98,10 +98,10 @@ A PX4 flight controller, a Linux companion computer, a ground control station an
 
 ---
 
-## 6. Requirements: 44 derived "shall" statements
+## 6. Requirements: 45 derived "shall" statements
 
-- **Allocation:** CC 15 · MSS 13 · FC 9 · GCS 7.
-- **Method:** Test 23 · Inspection 13 · Demonstration 8.
+- **Allocation:** CC 15 · MSS 13 · FC 9 · GCS 8.
+- **Method:** Test 24 · Inspection 13 · Demonstration 8.
 - **Traceability:** every requirement traces to a threat, is allocated to one component and is verifiable. CI enforces all three.
 
 | Example | Requirement |
@@ -116,12 +116,12 @@ A PX4 flight controller, a Linux companion computer, a ground control station an
 
 ## 7. Verification: every requirement has a planned event
 
-16 verification events cover all 44 requirements. Each event's method and evidence repo match its requirements, and the validator enforces that.
+17 verification events cover all 45 requirements. Each event's method and evidence repo match its requirements, and the validator enforces that.
 
 | Repo | Builds | Requirements | Events |
 |---|---|---|---|
 | P2 | Verified boot (CC and FC) | 3 | VE-07, VE-08 |
-| P3 | Keys, signing, SITL harness | 13 | VE-01 to VE-06 |
+| P3 | Keys, signing, SITL harness | 14 | VE-01 to VE-06, VE-17 |
 | P4 | Hardened CC image, MSS pipeline, supply chain | 14 | VE-09 to VE-11 |
 | P5 | Hardware and debug-port assessment | 2 | VE-12, VE-13 |
 | P6 | RMF-as-code: configuration and procedure evidence | 12 | VE-14 to VE-16 |

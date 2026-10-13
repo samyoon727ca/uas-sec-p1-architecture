@@ -17,11 +17,11 @@ All P1 deliverables are in place and checked in CI: architecture, threat model, 
 - **OI-03:** no independent C2 path. Deferred to a later P1 revision.
 - **DD-06:** re-pin from PX4 `v1.18.0-rc1` to `v1.18.0` once PX4 releases it.
 
-All 16 verification events are planned; their results arrive as P2–P6 produce evidence.
+All 17 verification events are planned; their results arrive as P2–P6 produce evidence.
 
 ## Threat
 
-65 threats, analyzed STRIDE per element across all 40 data-flow-diagram elements and mapped to MITRE EMB3D v2.0.2 and ATT&CK for ICS v19.2. Mission-impact ratings: 41 MI-1, 16 MI-2, 6 MI-3, 2 MI-4. 62 are mitigated and 3 accepted with rationale.
+66 threats, analyzed STRIDE per element across all 40 data-flow-diagram elements and mapped to MITRE EMB3D v2.0.2 and ATT&CK for ICS v19.2. Mission-impact ratings: 42 MI-1, 16 MI-2, 6 MI-3, 2 MI-4. 63 are mitigated and 3 accepted with rationale.
 
 **Headline finding.** PX4 MAVLink signing uses one shared key. The FC, companion computer (CC), GCS and maintenance station (MSS) all hold it, so most MI-1 threats end the same way: an adversary holds that key, or runs code on a node that does.
 
@@ -39,7 +39,7 @@ The full analysis, STRIDE coverage matrix, accepted risks and residual risk are 
 
 ## Requirements
 
-44 derived "shall" requirements. Each one traces to at least one threat, is allocated to one component (CC 15, MSS 13, FC 9, GCS 7), and names a verification method (Test 23, Inspection 13, Demonstration 8) and an evidence repo.
+45 derived "shall" requirements. Each one traces to at least one threat, is allocated to one component (CC 15, MSS 13, FC 9, GCS 8), and names a verification method (Test 24, Inspection 13, Demonstration 8) and an evidence repo.
 
 Example: **SR-001** (CC) — the CC shall discard all traffic on its radio interface except WireGuard traffic from the provisioned GCS peer. Verified by Test (VE-01), with evidence from P3.
 
@@ -88,12 +88,12 @@ Traceability is checked automatically on every push. [`tools/validate_trace.py`]
 
 The column rules are in [`data/README.md`](data/README.md).
 
-16 verification events cover all 44 requirements ([`docs/08-verification-plan.md`](docs/08-verification-plan.md)). Evidence for each will come from the follow-on repos:
+17 verification events cover all 45 requirements ([`docs/08-verification-plan.md`](docs/08-verification-plan.md)). Evidence for each will come from the follow-on repos:
 
 | Repo | Scope | Requirements | Verification events | Status |
 |---|---|---|---|---|
 | P2 | Verified boot chain | 3 | VE-07, VE-08 | Planned |
-| P3 | PKI, key management and signed updates; SITL harness | 13 | VE-01 to VE-06 | Planned |
+| P3 | PKI, key management and signed updates; SITL harness | 14 | VE-01 to VE-06, VE-17 | Planned |
 | P4 | Hardened CC image, MSS pipeline and supply chain | 14 | VE-09 to VE-11 | Planned |
 | P5 | Hardware and firmware security assessment | 2 | VE-12, VE-13 | Planned |
 | P6 | RMF-as-code (OSCAL): configuration and procedure evidence | 12 | VE-14 to VE-16 | Planned |
@@ -109,7 +109,7 @@ The column rules are in [`data/README.md`](data/README.md).
 | [`docs/05-threat-model.md`](docs/05-threat-model.md) | STRIDE per element, EMB3D, ATT&CK for ICS, priority and accepted risks | Baselined |
 | [`docs/06-cyber-resiliency.md`](docs/06-cyber-resiliency.md) | NIST SP 800-160 Vol. 2 techniques and approaches mapped to the design; gaps | Baselined |
 | [`docs/07-requirements.md`](docs/07-requirements.md) | Requirement conventions; full table with parent threats | Baselined |
-| [`docs/08-verification-plan.md`](docs/08-verification-plan.md) | 16 verification events covering all requirements; VE-01 and VE-02 in full | Baselined |
+| [`docs/08-verification-plan.md`](docs/08-verification-plan.md) | 17 verification events covering all requirements; VE-01 and VE-02 in full | Baselined |
 | [`docs/references.md`](docs/references.md) | Sources, with pinned versions | Baselined |
 | [`data/`](data/) | Elements, threats, requirements, trace and verification (CSV); pinned framework catalogs | Populated |
 | [`model/sysml/`](model/sysml/) | SysML v2 model: hand-written architecture, plus threats, requirements and verification generated from the CSVs; validated on the OMG Pilot Implementation | Baselined |
