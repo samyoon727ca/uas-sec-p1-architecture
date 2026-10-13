@@ -1,0 +1,6 @@
+# The P2 snapshot must stay byte-for-byte equal to P2 (tools/check_p2_snapshot.py),
+# so no line-ending conversion is applied to it on any platform.
+overview/p2-snapshot/** -text
+
+# Built PDFs are binary: never convert line endings in them, whatever git guesses.
+*.pdf binary

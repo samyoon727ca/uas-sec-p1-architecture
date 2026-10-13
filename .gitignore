@@ -3,3 +3,5 @@ __pycache__/
 .venv/
 .cache/
 brief/node_modules/
+overview/node_modules/
+overview/build/

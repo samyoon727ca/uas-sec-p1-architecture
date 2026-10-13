@@ -1,0 +1,7 @@
+# P2 snapshot for the overview (overview/README.md). Every other file in this
+# folder is a byte-for-byte copy of the file at the same path in P2 at the
+# commit below; tools/check_p2_snapshot.py verifies that in CI. To move the
+# pin, copy the files from the new P2 commit and update this file in the same
+# change.
+repo: samyoon727ca/uas-sec-p2-verified-boot
+commit: db31c1451c7af859ae08cc2d4b073980cc666a1a

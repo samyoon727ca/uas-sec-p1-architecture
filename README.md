@@ -8,6 +8,8 @@ This repo is the security architecture, threat model and derived requirements fo
 
 **Five-minute version:** the 11-slide PDR-style brief, as [PDF](brief/pdr-brief.pdf) or [Markdown](brief/pdr-brief.md).
 
+**From first principles:** the [project overview](overview/overview.pdf) (PDF) explains the system, P2's verified boot, measured boot and TPM key sealing, every P2 test case and its evidence, and how to rebuild and rerun the tests. Its tables and statuses are generated from P1's data and a pinned P2 snapshot ([`overview/`](overview/)).
+
 **Status: baseline 1.0, complete (October 2026).**
 
 All P1 deliverables are in place and checked in CI: architecture, threat model, resiliency mapping, requirements, verification plan, SysML v2 model and brief. Still open, each tracked to its owner:
@@ -114,6 +116,7 @@ The column rules are in [`data/README.md`](data/README.md).
 | [`data/`](data/) | Elements, threats, requirements, trace and verification (CSV); pinned framework catalogs | Populated |
 | [`model/sysml/`](model/sysml/) | SysML v2 model: hand-written architecture, plus threats, requirements and verification generated from the CSVs; validated on the OMG Pilot Implementation | Baselined |
 | [`brief/`](brief/) | 11-slide PDR-style brief (Marp source and PDF). Diagrams are rendered from the docs; the PDF is built in CI with a pinned toolchain | Baselined |
+| [`overview/`](overview/) | Project overview from first principles (Markdown sources and PDF): P1, P2 in full, a roadmap for P3–P6, and a reserved limitations chapter. Tables and statuses are generated from `data/` and a pinned P2 snapshot (`overview/p2-snapshot/`, checked by `tools/check_p2_snapshot.py`); the PDF is built in CI with a pinned toolchain (the brief's mermaid-cli and puppeteer, plus markdown-it) | Draft: limitations chapter reserved |
 
 ## Run the checks locally
 
@@ -124,6 +127,8 @@ python tools/render_views.py --check
 python tools/gen_sysml.py --check
 tools/sysml/validate.sh   # Java 21+; downloads the pinned SysML v2 Pilot Implementation once
 CHROME_PATH=/path/to/chrome brief/build.sh   # Node 22+; rebuilds brief/pdr-brief.pdf
+python tools/check_p2_snapshot.py            # needs network; overview/p2-snapshot matches P2
+CHROME_PATH=/path/to/chrome overview/build.sh   # Node 22+, git; rebuilds overview/overview.pdf
 ```
 
 Python 3.11+. Standard library only.
