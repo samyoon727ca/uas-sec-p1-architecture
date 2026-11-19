@@ -10,3 +10,5 @@
 `tools/gen_overview.py` renders the chapter's tables from this file (blocks `audit-summary`, `audit-scale`, `audit-index`, `audit-findings`). The text of each finding goes into the PDF unchanged, apart from whitespace, so the chapter cannot soften or drift from the audit.
 
 When the owner triages a finding, record the outcome in the repo it concerns (P1 or P2) and in a later audit. Do not edit this copy: replace it with that audit's file and update the hashes above.
+
+P1 records the audit items it has closed since the audit in [`closures.md`](closures.md).

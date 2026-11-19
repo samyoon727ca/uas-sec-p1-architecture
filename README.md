@@ -94,7 +94,7 @@ The column rules are in [`data/README.md`](data/README.md).
 
 | Repo | Scope | Requirements | Verification events | Status |
 |---|---|---|---|---|
-| P2 | Verified boot chain | 3 | VE-07, VE-08 | Planned |
+| P2 | Verified boot chain | 3 | VE-07, VE-08 | [In progress (emulation only)](overview/p2-snapshot/evidence/) |
 | P3 | PKI, key management and signed updates; SITL harness | 14 | VE-01 to VE-06, VE-17 | Planned |
 | P4 | Hardened CC image, MSS pipeline and supply chain | 14 | VE-09 to VE-11 | Planned |
 | P5 | Hardware and firmware security assessment | 2 | VE-12, VE-13 | Planned |
