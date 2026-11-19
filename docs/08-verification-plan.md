@@ -23,7 +23,7 @@ Generated from the CSVs by `tools/render_views.py`. CI fails if this view drifts
 | ID | Event | Method | Evidence | Verifies | Status | Pass criteria |
 |---|---|---|---|---|---|---|
 | VE-01 | Spoofed GCS heartbeats do not suppress the data-link-loss failsafe | T | P3 | SR-001, SR-002, SR-004 | planned | FC enters Return within COM_DL_LOSS_T plus a stated tolerance; CC and GCS counters show injected packets dropped; control run shows the failsafe suppressed. |
-| VE-02 | Signed C2 works with the pinned versions | D | P3 | SR-003, SR-025 | planned | Signed commands execute; unsigned and wrongly signed commands have no effect; the GCS alerts on unsigned telemetry. Closes OI-01. |
+| VE-02 | Signed C2 works with the pinned versions | D | P3 | SR-003, SR-025 | [planned](https://github.com/samyoon727ca/uas-sec-p3-pki/blob/813ad2fb61338fce87b7a776267d26b56c3a3175/evidence/ve02-phaseA/ve02-phaseA.md) | Signed commands execute; unsigned and wrongly signed commands have no effect; the GCS alerts on unsigned telemetry. Closes OI-01. |
 | VE-03 | CC accepts only signed, newer update images | T | P3 | SR-007 | planned | Only the valid newer image installs; each rejection is logged. |
 | VE-04 | CC autonomy ignores unsigned or altered FC telemetry | T | P3 | SR-015 | planned | Autonomy decisions use only frames with valid signatures; injected frames are logged and discarded. |
 | VE-05 | Imagery and flight logs are unreadable without the MSS key | D | P3 | SR-017, SR-019 | planned | Copies from the vehicle are unreadable; the MSS decrypts both. |
@@ -89,5 +89,7 @@ VE-01 and VE-02 are written out in full below, because they close the architectu
 - Unsigned and wrongly signed commands are rejected and have no effect.
 - After step 6, QGroundControl alerts the operator that FC telemetry is unsigned (SR-025).
 - Step 7 is a measurement, not a pass/fail check. Its result updates THR-065: if the replayed frame is rejected, the assumption is retired; if it is accepted, the threat stands and a requirement is added.
+
+**Status:** partly evidenced by P3's automated run ([summary](https://github.com/samyoon727ca/uas-sec-p3-pki/blob/813ad2fb61338fce87b7a776267d26b56c3a3175/evidence/ve02-phaseA/ve02-phaseA.md), from [sitl-phase0 run 44631064225](https://github.com/samyoon727ca/uas-sec-p3-pki/actions/runs/44631064225) at harness commit `782ca162623257a6f71d77232e3674fceeb01f14`); steps 2, 3 and 6 are pending the QGroundControl run in uas-sec-p3-pki#6.
 
 **Until this passes,** documents describe GCS-to-FC signing as design intent only, not as working (OI-01).
