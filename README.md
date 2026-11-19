@@ -19,7 +19,7 @@ All P1 deliverables are in place and checked in CI: architecture, threat model, 
 - **OI-03:** no independent C2 path. Deferred to a later P1 revision.
 - **DD-06:** re-pin from PX4 `v1.18.0-rc1` to `v1.18.0` once PX4 releases it.
 
-All 17 verification events are planned; their results arrive as P2–P6 produce evidence.
+16 of 17 verification events are planned, with results arriving as P2–P6 produce evidence. VE-02 is partly evidenced by P3 ([summary](https://github.com/samyoon727ca/uas-sec-p3-pki/blob/813ad2fb61338fce87b7a776267d26b56c3a3175/evidence/ve02-phaseA/ve02-phaseA.md), from [sitl-phase0 run 44631064225](https://github.com/samyoon727ca/uas-sec-p3-pki/actions/runs/44631064225) at harness commit `782ca162623257a6f71d77232e3674fceeb01f14`), and its QGroundControl steps 2, 3 and 6 wait on uas-sec-p3-pki#6.
 
 ## Threat
 
@@ -95,7 +95,7 @@ The column rules are in [`data/README.md`](data/README.md).
 | Repo | Scope | Requirements | Verification events | Status |
 |---|---|---|---|---|
 | P2 | Verified boot chain | 3 | VE-07, VE-08 | [In progress (emulation only)](overview/p2-snapshot/evidence/) |
-| P3 | PKI, key management and signed updates; SITL harness | 14 | VE-01 to VE-06, VE-17 | Planned |
+| P3 | PKI, key management and signed updates; SITL harness | 14 | VE-01 to VE-06, VE-17 | In progress (VE-02 partly evidenced) |
 | P4 | Hardened CC image, MSS pipeline and supply chain | 14 | VE-09 to VE-11 | Planned |
 | P5 | Hardware and firmware security assessment | 2 | VE-12, VE-13 | Planned |
 | P6 | RMF-as-code (OSCAL): configuration and procedure evidence | 12 | VE-14 to VE-16 | Planned |
