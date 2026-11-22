@@ -100,6 +100,8 @@ One row per repo in the UAS series. This file is the source of truth for which r
 
 Every event in `verification.csv` appears in exactly one row, the row whose `p_id` equals the event's `evidence_repo`. Every `evidence_repo` in `verification.csv` and `requirements.csv` must be a `p_id` here. Changing an allocation therefore means changing both files in the same pull request.
 
+Each series repo reports its status in a `series-status.json` file that may claim only the VEs listed in its row here. The format is in [`docs/series-status.md`](../docs/series-status.md), and `tools/check_series_status.py` checks it.
+
 ## Running locally
 
 ```sh
