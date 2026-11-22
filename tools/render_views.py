@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import json
 import re
 import sys
 from collections import Counter
@@ -21,6 +22,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / "data"
 sys.path.insert(0, str(ROOT / "tools"))
+from check_series_status import check  # noqa: E402
 from validate_trace import CATALOGS, STRIDE_APPLICABLE, STRIDE_ELEMENT_TYPES, split_multi  # noqa: E402
 
 TYPE_LABEL = {"process": "Process", "external_entity": "External entity",
@@ -151,11 +153,123 @@ def status_cell(event: dict) -> str:
     return event["status"]
 
 
+SERIES_OWNER = "samyoon727ca"
+SERIES_STATUS = DATA / "series-status"
+ALIGNMENT = ROOT / "docs/series-alignment.md"
+# Shown for a repo that has no status snapshot yet.
+FALLBACK_LINKS = {"P2": ("emulation-only evidence", "overview/p2-snapshot/evidence/")}
+
+
+def ve_number(ve_id: str) -> int:
+    return int(ve_id.split("-")[1])
+
+
+def format_ves(ve_ids: list[str], links: dict[str, list[str]] | None = None) -> str:
+    """VE IDs in order; runs of three or more consecutive IDs become 'VE-01 to VE-06'.
+
+    An ID with evidence links is linked (numbered if several) and is never folded into a run.
+    """
+    links = links or {}
+    parts: list[str] = []
+    run: list[str] = []
+
+    def flush() -> None:
+        if len(run) >= 3:
+            parts.append(f"{run[0]} to {run[-1]}")
+        else:
+            parts.extend(run)
+        run.clear()
+
+    for ve in ve_ids:
+        urls = [cell(u) for u in links.get(ve, [])]
+        if urls:
+            flush()
+            if len(urls) == 1:
+                parts.append(f"[{ve}]({urls[0]})")
+            else:
+                parts.append(f"{ve} (" + ", ".join(f"[{i}]({u})" for i, u in enumerate(urls, 1)) + ")")
+            continue
+        if run and ve_number(ve) != ve_number(run[-1]) + 1:
+            flush()
+        run.append(ve)
+    flush()
+    return ", ".join(parts)
+
+
+def requirement_count(ve_ids: list[str], events: dict[str, dict]) -> int:
+    return len({rid for ve in ve_ids for rid in split_multi(events[ve]["req_ids"])})
+
+
+def load_snapshot(row: dict, snapshot_dir: Path) -> dict[str, dict] | None:
+    """The repo's VE entries from its status snapshot, checked first; None if there is no snapshot."""
+    path = snapshot_dir / f"{row['repo']}.json"
+    if not path.is_file():
+        return None
+    report = check([path], DATA)
+    if report.errors:
+        raise SystemExit("invalid series status snapshot:\n  " + "\n  ".join(report.errors))
+    doc = json.loads(path.read_text(encoding="utf-8"))
+    return {ve["ve_id"]: ve for ve in doc["ves"]}
+
+
+def alignment_link(p_id: str, alignment: Path) -> str:
+    """docs/series-alignment.md, with the anchor of the '## P#: ...' heading if there is one."""
+    target = "docs/series-alignment.md"
+    if alignment.is_file():
+        for line in alignment.read_text(encoding="utf-8").splitlines():
+            if line.startswith(f"## {p_id}:"):
+                slug = re.sub(r"[^\w\- ]", "", line[3:].strip().lower()).replace(" ", "-")
+                return f"{target}#{slug}"
+    return target
+
+
+def series_status(row: dict, events: dict[str, dict], snapshot_dir: Path, alignment: Path) -> str:
+    ve_ids = split_multi(row["ve_ids"])
+    snapshot = load_snapshot(row, snapshot_dir)
+    by_status: dict[str, list[str]] = {}
+    links: dict[str, list[str]] = {}
+    for ve in ve_ids:
+        entry = (snapshot or {}).get(ve)
+        if entry is None:
+            status, links[ve] = events[ve]["status"], split_multi(events[ve]["evidence"])
+        else:
+            status, links[ve] = entry["status"], entry["evidence"]
+        by_status.setdefault(status, []).append(ve)
+    text = "; ".join(f"{status}: {format_ves(ves, links)}" for status, ves in by_status.items())
+    if snapshot is None and row["p_id"] in FALLBACK_LINKS:
+        label, url = FALLBACK_LINKS[row["p_id"]]
+        text += f" ([{label}]({url}))"
+    if row["alignment"] == "pending decision":
+        text += (f"<br>Allocation pending decision: {cell(row['note'])} "
+                 f"([series alignment]({alignment_link(row['p_id'], alignment)}))")
+    return text
+
+
+def series_table(snapshot_dir: Path = SERIES_STATUS, alignment: Path = ALIGNMENT) -> str:
+    events = {e["ve_id"]: e for e in read("verification.csv")}
+    lines = [
+        "| Repo | Scope | Requirements | Verification events | Status |",
+        "|---|---|---|---|---|",
+    ]
+    for row in read("series.csv"):
+        ve_ids = split_multi(row["ve_ids"])
+        if not ve_ids:  # P1 itself
+            continue
+        lines.append(
+            f"| [{row['p_id']}](https://github.com/{SERIES_OWNER}/{row['repo']}) | {cell(row['scope'])} | "
+            f"{requirement_count(ve_ids, events)} | {format_ves(ve_ids)} | "
+            f"{series_status(row, events, snapshot_dir, alignment)} |"
+        )
+    return "\n".join(lines)
+
+
+
 VIEWS = {
     "threat-matrix": (ROOT / "docs/05-threat-model.md", threat_matrix),
     "requirements-table": (ROOT / "docs/07-requirements.md", requirements_table),
     "resiliency-approaches": (ROOT / "docs/06-cyber-resiliency.md", resiliency_approaches),
     "verification-events": (ROOT / "docs/08-verification-plan.md", verification_events),
+    "series-table": (ROOT / "README.md", series_table),
 }
 
 
