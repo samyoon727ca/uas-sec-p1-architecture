@@ -113,6 +113,7 @@ The column rules are in [`data/README.md`](data/README.md).
 | [`docs/07-requirements.md`](docs/07-requirements.md) | Requirement conventions; full table with parent threats | Baselined |
 | [`docs/08-verification-plan.md`](docs/08-verification-plan.md) | 17 verification events covering all requirements; VE-01 and VE-02 in full | Baselined |
 | [`docs/references.md`](docs/references.md) | Sources, with pinned versions | Baselined |
+| [`docs/series-alignment.md`](docs/series-alignment.md) | Where P4, P5, P6 and a possible P7 depart from P1's VE allocation; options and decision log | Draft: awaiting owner decision |
 | [`data/`](data/) | Elements, threats, requirements, trace and verification (CSV); pinned framework catalogs | Populated |
 | [`model/sysml/`](model/sysml/) | SysML v2 model: hand-written architecture, plus threats, requirements and verification generated from the CSVs; validated on the OMG Pilot Implementation | Baselined |
 | [`brief/`](brief/) | 11-slide PDR-style brief (Marp source and PDF). Diagrams are rendered from the docs; the PDF is built in CI with a pinned toolchain | Baselined |
