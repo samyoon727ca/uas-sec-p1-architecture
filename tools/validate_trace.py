@@ -3,8 +3,9 @@
 
 Checks schema, ID format and uniqueness, referential integrity, threat
 dispositions, requirement quality, STRIDE-per-element applicability and
-coverage, verification coverage, and that EMB3D, ATT&CK for ICS and NIST
-SP 800-160 Vol. 2 entries exist in the pinned catalogs under data/catalogs/.
+coverage, verification coverage, the series manifest, and that EMB3D,
+ATT&CK for ICS and NIST SP 800-160 Vol. 2 entries exist in the pinned
+catalogs under data/catalogs/.
 Exits 1 if any error is found. Standard library only.
 
 Usage:
@@ -36,6 +37,7 @@ SCHEMAS = {
         "ve_id", "title", "method", "evidence_repo", "req_ids", "procedure",
         "pass_criteria", "status", "evidence",
     ],
+    "series.csv": ["p_id", "repo", "scope", "ve_ids", "alignment", "note"],
 }
 
 # Element ID pattern by DFD element type.
@@ -69,6 +71,8 @@ CATALOGS = {
 THREAT_ID = re.compile(r"^THR-\d{3}$")
 REQ_ID = re.compile(r"^SR-\d{3}$")
 VE_ID = re.compile(r"^VE-\d{2}$")
+P_ID = re.compile(r"^P\d+$")
+REPO_NAME = re.compile(r"^[\w.-]+$")
 EMB3D_ID = re.compile(r"^TID-\d{3}$")
 ATTACK_ICS_ID = re.compile(r"^T\d{4}(\.\d{3})?$")
 SHALL = re.compile(r"\bshall\b", re.IGNORECASE)
@@ -82,6 +86,7 @@ DISPOSITIONS = {"mitigate", "accept"}
 VERIFICATION = {"I", "A", "D", "T"}  # Inspection, Analysis, Demonstration, Test
 EVIDENCE_REPOS = {"P2", "P3", "P4", "P5", "P6"}
 VE_STATUS = {"planned", "passed", "failed"}
+ALIGNMENT = {"aligned", "pending decision"}
 
 
 class Report:
@@ -329,6 +334,45 @@ def check_verification(rows: list[dict], reqs: dict, report: Report) -> dict[str
     return index
 
 
+def check_series(rows: list[dict], events: dict, reqs: dict, report: Report) -> dict[str, dict]:
+    """series.csv is the manifest of series repos. Every verification event
+    is listed in exactly one row, the row of its evidence repo, and every
+    evidence repo is a known p_id."""
+    index = index_unique(rows, "p_id", P_ID, report)
+    repos: dict[str, str] = {}
+    listed: dict[str, dict] = {}
+    for row in index.values():
+        where, repo = row["_where"], row["repo"]
+        require(row, ["scope"], report)
+        if not REPO_NAME.match(repo):
+            report.error(where, f"malformed repo '{repo}'")
+        elif repo in repos:
+            report.error(where, f"duplicate repo '{repo}' (first at {repos[repo]})")
+        else:
+            repos[repo] = where
+        if row["alignment"] not in ALIGNMENT:
+            report.error(where, f"alignment '{row['alignment']}' must be one of {sorted(ALIGNMENT)}")
+        for ve in split_multi(row["ve_ids"]):
+            event = events.get(ve)
+            if event is None:
+                report.error(where, f"ve_id '{ve}' is not a known verification event")
+            elif ve in listed:
+                report.error(where, f"{ve} is listed more than once (first at {listed[ve]['_where']})")
+            else:
+                listed[ve] = row
+                if event["evidence_repo"] != row["p_id"]:
+                    report.error(where, f"{ve} is listed under {row['p_id']} but its evidence_repo "
+                                        f"is '{event['evidence_repo']}' in verification.csv")
+    for ve, event in events.items():
+        if ve not in listed:
+            report.error(event["_where"], f"{ve} is not listed in series.csv")
+    for row in [*reqs.values(), *events.values()]:
+        repo = row["evidence_repo"]
+        if repo and repo not in index:
+            report.error(row["_where"], f"evidence_repo '{repo}' is not a p_id in series.csv")
+    return index
+
+
 def check_closure(elements, threats, reqs, links, report: Report, allow_unanalyzed: bool) -> None:
     linked_threats = {t for t, _ in links}
     linked_reqs = {r for _, r in links}
@@ -369,12 +413,14 @@ def validate(data_dir: Path, allow_unanalyzed: bool = False) -> Report:
     reqs = check_requirements(loaded["requirements.csv"], elements, catalogs, report)
     links = check_trace(loaded["trace.csv"], threats, reqs, report)
     events = check_verification(loaded["verification.csv"], reqs, report)
+    series = check_series(loaded["series.csv"], events, reqs, report)
     check_closure(elements, threats, reqs, links, report, allow_unanalyzed)
 
     report.summary = (
         f"{len(elements)} elements, {len(threats)} threats "
         f"({sum(t['disposition'] == 'accept' for t in threats.values())} accepted), "
-        f"{len(reqs)} requirements, {len(links)} trace links, {len(events)} verification events"
+        f"{len(reqs)} requirements, {len(links)} trace links, {len(events)} verification events, "
+        f"{len(series)} series repos"
     )
     return report
 

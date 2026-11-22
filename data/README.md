@@ -1,6 +1,6 @@
 # Traceability data
 
-These five CSVs are the single source of truth for P1's elements, threats, requirements, trace links and verification events. The `catalogs/` folder pins the framework IDs they may use. GitHub renders each file as a searchable table. `tools/validate_trace.py` enforces every rule below on each push.
+These six CSVs are the single source of truth for P1's elements, threats, requirements, trace links, verification events and the series of repos that produce the evidence. The `catalogs/` folder pins the framework IDs they may use. GitHub renders each file as a searchable table. `tools/validate_trace.py` enforces every rule below on each push.
 
 Multi-value cells are semicolon-separated (`TID-201; TID-215`).
 
@@ -84,6 +84,21 @@ Every requirement needs at least one parent threat. Duplicate pairs are rejected
 Every requirement must be covered by at least one event whose method and evidence repo match its own.
 
 The evidence repo (P2 to P6) records the result here with a pull request. Pinning each link to a commit means the evidence it shows cannot change after P1 records the result.
+
+## `series.csv`: series manifest
+
+One row per repo in the UAS series. This file is the source of truth for which repo each `P#` names and which verification events it owns.
+
+| Column | Rule |
+|---|---|
+| `p_id` | Unique, `P` followed by digits (`P1`) |
+| `repo` | Unique GitHub repo name: letters, digits, `_`, `.` and `-` only |
+| `scope` | Required. The repo's scope, as in the [README](../README.md) table |
+| `ve_ids` | Known verification events allocated to the repo; empty for P1 |
+| `alignment` | `aligned`, or `pending decision` when the repo's actual work differs from its P1 allocation |
+| `note` | Optional. For `pending decision`, one line on what the repo actually does |
+
+Every event in `verification.csv` appears in exactly one row, the row whose `p_id` equals the event's `evidence_repo`. Every `evidence_repo` in `verification.csv` and `requirements.csv` must be a `p_id` here. Changing an allocation therefore means changing both files in the same pull request.
 
 ## Running locally
 
