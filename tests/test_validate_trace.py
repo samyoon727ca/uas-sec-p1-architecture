@@ -40,6 +40,13 @@ def event(veid, req_ids, **kw):
     return row
 
 
+def series(pid, ve_ids, **kw):
+    row = {c: "" for c in vt.SCHEMAS["series.csv"]}
+    row.update(p_id=pid, repo=f"uas-sec-{pid.lower()}", scope="s", ve_ids=ve_ids, alignment="aligned")
+    row.update(kw)
+    return row
+
+
 SHA = "a1b2c3d4" * 5  # a full 40-character commit SHA
 EVIDENCE = f"https://github.com/owner/repo/blob/{SHA}/evidence/ve07-ci/summary.md"
 
@@ -74,6 +81,11 @@ def baseline():
         "verification.csv": [
             event("VE-01", "SR-001", method="T", evidence_repo="P2"),
             event("VE-02", "SR-002", method="I", evidence_repo="P6"),
+        ],
+        "series.csv": [
+            series("P1", ""),
+            series("P2", "VE-01"),
+            series("P6", "VE-02", alignment="pending decision", note="n"),
         ],
     }
 
@@ -308,6 +320,57 @@ class ValidatorTest(unittest.TestCase):
             data = baseline()
             data["verification.csv"][0].update(status="passed", evidence=link)
             self.assertError(data, f"evidence '{link}' must be a GitHub URL pinned to a full commit SHA")
+
+    # --- series manifest ----------------------------------------------
+    def test_series_baseline_is_valid(self):
+        report = self.run_validator(baseline())
+        self.assertEqual(report.errors, [])
+        self.assertIn("3 series repos", report.summary)
+
+    def test_series_duplicate_ve(self):
+        data = baseline()
+        data["series.csv"][0]["ve_ids"] = "VE-01"
+        self.assertError(data, "VE-01 is listed more than once")
+
+    def test_series_ve_under_wrong_p_id(self):
+        data = baseline()
+        data["series.csv"][1]["ve_ids"] = ""
+        data["series.csv"][2]["ve_ids"] = "VE-02; VE-01"
+        self.assertError(data, "VE-01 is listed under P6 but its evidence_repo is 'P2'")
+
+    def test_series_unknown_ve(self):
+        data = baseline()
+        data["series.csv"][1]["ve_ids"] = "VE-01; VE-99"
+        self.assertError(data, "ve_id 'VE-99' is not a known verification event")
+
+    def test_series_ve_not_listed(self):
+        data = baseline()
+        data["series.csv"][1]["ve_ids"] = ""
+        self.assertError(data, "VE-01 is not listed in series.csv")
+
+    def test_series_bad_alignment(self):
+        data = baseline()
+        data["series.csv"][1]["alignment"] = "done"
+        self.assertError(data, "alignment 'done' must be one of")
+
+    def test_series_missing_p_id(self):
+        data = baseline()
+        data["series.csv"] = data["series.csv"][:2]  # drop P6
+        self.assertError(data, "evidence_repo 'P6' is not a p_id in series.csv")
+
+    def test_series_ids_and_repos(self):
+        data = baseline()
+        data["series.csv"][0].update(p_id="Px")
+        self.assertError(data, "malformed p_id 'Px'")
+        data = baseline()
+        data["series.csv"].append(series("P2", ""))
+        self.assertError(data, "duplicate p_id 'P2'")
+        data = baseline()
+        data["series.csv"][0]["repo"] = "bad/repo"
+        self.assertError(data, "malformed repo 'bad/repo'")
+        data = baseline()
+        data["series.csv"][1]["repo"] = data["series.csv"][0]["repo"]
+        self.assertError(data, "duplicate repo 'uas-sec-p1'")
 
     # --- trace ----------------------------------------------------------
     def test_trace_to_unknown_ids(self):

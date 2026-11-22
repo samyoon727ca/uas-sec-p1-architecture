@@ -1,0 +1,7 @@
+p_id,repo,scope,ve_ids,alignment,note
+P1,uas-sec-p1-architecture,Security architecture and requirements,,aligned,
+P2,uas-sec-p2-verified-boot,Verified boot chain,VE-07; VE-08,aligned,
+P3,uas-sec-p3-pki,"PKI, key management and signed updates; SITL harness",VE-01; VE-02; VE-03; VE-04; VE-05; VE-06; VE-17,aligned,
+P4,uas-sec-p4-cc,"Hardened CC image, MSS pipeline and supply chain",VE-09; VE-10; VE-11,pending decision,Repo is the MAVLink proxy for VE-10
+P5,uas-sec-p5-fault-sim,Hardware and firmware security assessment,VE-12; VE-13,pending decision,Repo is fault injection on the PX4 bootloader
+P6,uas-sec-oscal,RMF-as-code (OSCAL): configuration and procedure evidence,VE-14; VE-15; VE-16,pending decision,Repo is the OSCAL pilot on VE-07
