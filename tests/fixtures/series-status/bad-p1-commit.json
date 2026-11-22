@@ -1,0 +1,9 @@
+{
+  "p_id": "P2",
+  "repo": "uas-sec-p2-verified-boot",
+  "p1_commit": "a16601e",
+  "ves": [
+    {"ve_id": "VE-07", "status": "partly evidenced", "evidence": ["https://github.com/samyoon727ca/uas-sec-p2-verified-boot/blob/0123456789abcdef0123456789abcdef01234567/evidence/ve07/summary.md"]},
+    {"ve_id": "VE-08", "status": "planned", "evidence": []}
+  ]
+}
