@@ -23,6 +23,12 @@ jobs:
         run: python -m unittest discover -s tests -v
       - name: Validate traceability data
         run: python tools/validate_trace.py
+      - name: Check series status snapshots
+        run: |
+          shopt -s nullglob
+          files=(data/series-status/*.json)
+          if [ ${#files[@]} -eq 0 ]; then echo "No series status snapshots"; exit 0; fi
+          python tools/check_series_status.py "${files[@]}"
       - name: Check generated doc views are current
         run: python tools/render_views.py --check
       - name: Check generated SysML model is current
