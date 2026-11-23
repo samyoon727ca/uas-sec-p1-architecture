@@ -5,8 +5,10 @@ For every row of data/series.csv except P1, downloads
 <base-url>/<repo>/HEAD/series-status.json and writes it unchanged, so
 tools/check_series_status.py can check it and tools/render_views.py can use
 it. A missing file (HTTP 404) is a warning and leaves any existing snapshot
-alone; any other HTTP or network error fails. The files are not validated
-here: run check_series_status.py on them next. Exits 1 on any failure.
+alone; any other HTTP or network error fails. A snapshot whose repo is no
+longer a non-P1 row of series.csv is removed, so a stale file can't keep
+failing the checker. The files are not validated here: run
+check_series_status.py on them next. Exits 1 on any failure.
 Standard library only.
 
 Usage:
@@ -66,8 +68,14 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     base = args.base_url.rstrip("/")
+    repos = series_repos(args.data_dir)
     failed = 0
-    for repo in series_repos(args.data_dir):
+    if args.out_dir.is_dir():
+        for stale in sorted(args.out_dir.glob("*.json")):
+            if stale.stem not in repos:
+                stale.unlink()
+                print(f"REMOVED {stale}: {stale.stem} is not a series repo in series.csv")
+    for repo in repos:
         url = f"{base}/{repo}/HEAD/series-status.json"
         out = args.out_dir / f"{repo}.json"
         try:

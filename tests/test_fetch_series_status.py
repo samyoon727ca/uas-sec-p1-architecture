@@ -90,6 +90,24 @@ class FetchSeriesStatusTest(unittest.TestCase):
         self.assertEqual(old.read_bytes(), b"previous")
         self.assertEqual(len([line for line in out.splitlines() if line.startswith("WARNING")]), 5)
 
+    def test_snapshot_of_repo_not_in_series_csv_is_removed(self):
+        self.out.mkdir()
+        stale = self.out / "uas-sec-retired.json"
+        stale.write_bytes(b"{}")
+        p1 = self.out / "uas-sec-p1-architecture.json"
+        p1.write_bytes(b"{}")
+        kept = self.out / f"{P2}.json"
+        kept.write_bytes(b"previous")
+        other = self.out / "README.md"
+        other.write_text("notes")
+        code, out = self.fetch()
+        self.assertEqual(code, 0, out)
+        self.assertIn("REMOVED", out)
+        self.assertFalse(stale.exists())
+        self.assertFalse(p1.exists())
+        self.assertEqual(kept.read_bytes(), b"previous")
+        self.assertTrue(other.exists())
+
     def test_other_http_error_fails(self):
         self.serve(P2, b"oops", status=500)
         code, out = self.fetch()

@@ -138,7 +138,7 @@ python tools/fetch_series_status.py          # needs network; refreshes data/ser
 python tools/check_series_status.py data/series-status/*.json   # if any snapshots exist
 ```
 
-The [`series-status`](.github/workflows/series-status.yml) workflow runs daily (or on demand from the Actions tab) and does the same: it fetches each series repo's `series-status.json`, checks it, regenerates the series table, runs `validate_trace.py`, and opens or updates a PR on `bot/series-status` if anything changed. It uses only `GITHUB_TOKEN`, so the repo setting "Allow GitHub Actions to create and approve pull requests" must be on. A status file that claims a VE not allocated to its repo fails the run. `fetch_series_status.py --base-url` points the fetcher at another server or a `file://` folder laid out as `<repo>/HEAD/series-status.json`.
+The [`series-status`](.github/workflows/series-status.yml) workflow runs daily (or on demand from the Actions tab) and does the same: it fetches each series repo's `series-status.json`, checks it, regenerates the series table, runs `validate_trace.py`, and opens or updates a PR on `bot/series-status` if anything changed. It uses only `GITHUB_TOKEN`, so the repo setting "Allow GitHub Actions to create and approve pull requests" must be on. A status file that claims a VE not allocated to its repo fails the run. The fetcher removes snapshots of repos no longer in `series.csv`. `validate.yml` does not run on the bot PR (pushes made with `GITHUB_TOKEN` don't trigger workflows), so the PR body links the run that checked it. `fetch_series_status.py --base-url` points the fetcher at another server or a `file://` folder laid out as `<repo>/HEAD/series-status.json`.
 
 Python 3.11+. Standard library only.
 
