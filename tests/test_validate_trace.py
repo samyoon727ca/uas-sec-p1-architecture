@@ -296,7 +296,7 @@ class ValidatorTest(unittest.TestCase):
         self.assertError(data, "status 'done' must be one of")
 
     def test_result_requires_evidence(self):
-        for status in ("passed", "failed"):
+        for status in ("partly evidenced", "passed", "failed"):
             data = baseline()
             data["verification.csv"][0]["status"] = status
             self.assertError(data, f"status '{status}' requires 'evidence'")
