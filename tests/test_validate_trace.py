@@ -356,12 +356,24 @@ class ValidatorTest(unittest.TestCase):
     def test_series_missing_p_id(self):
         data = baseline()
         data["series.csv"] = data["series.csv"][:2]  # drop P6
-        self.assertError(data, "evidence_repo 'P6' is not a p_id in series.csv")
+        self.assertError(data, "evidence_repo 'P6' must be a p_id in series.csv other than P1")
+
+    def test_series_new_p_id_is_an_evidence_repo(self):
+        data = baseline()
+        data["requirements.csv"][1]["evidence_repo"] = "P7"
+        data["verification.csv"][1]["evidence_repo"] = "P7"
+        data["series.csv"][2]["ve_ids"] = ""
+        data["series.csv"].append(series("P7", "VE-02"))
+        report = self.run_validator(data)
+        self.assertEqual(report.errors, [])
 
     def test_series_ids_and_repos(self):
         data = baseline()
         data["series.csv"][0].update(p_id="Px")
         self.assertError(data, "malformed p_id 'Px'")
+        data = baseline()
+        data["series.csv"][0].update(p_id="")
+        self.assertError(data, "malformed p_id ''")
         data = baseline()
         data["series.csv"].append(series("P2", ""))
         self.assertError(data, "duplicate p_id 'P2'")
