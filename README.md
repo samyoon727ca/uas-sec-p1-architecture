@@ -10,6 +10,8 @@ This repo is the security architecture, threat model and derived requirements fo
 
 **From first principles:** the [project overview](overview/overview.pdf) (PDF) explains the system, P2's verified boot, measured boot and TPM key sealing, every P2 test case and its evidence, and how to rebuild and rerun the tests. Its tables and statuses are generated from P1's data and a pinned P2 snapshot ([`overview/`](overview/)).
 
+**How the repo works:** the [guide](docs/GUIDE.md) covers its data flow, tools, checks and open edges.
+
 **Status: baseline 1.0, complete (October 2026).**
 
 All P1 deliverables are in place and checked in CI: architecture, threat model, resiliency mapping, requirements, verification plan, SysML v2 model and brief. Still open, each tracked to its owner:
