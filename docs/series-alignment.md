@@ -10,7 +10,7 @@ Proposal: [samyoon727ca/foreman#29](https://github.com/samyoon727ca/foreman/issu
 
 | P# | Repo | P1 scope and VEs | What the repo actually does | VEs left uncovered |
 |---|---|---|---|---|
-| P4 | [`uas-sec-p4-cc`](https://github.com/samyoon727ca/uas-sec-p4-cc) | Hardened CC image, MSS pipeline and supply chain. VE-09 (CC image hardening), VE-10 (CC command filter and logging), VE-11 (supply-chain pipeline and package integrity); 14 requirements | Mostly an inline MAVLink allowlist, rate-limit and logging proxy for VE-10 (approved idea #16). VE-09 and VE-11 have one task done each; VE-11 is also proposed in [foreman#15](https://github.com/samyoon727ca/foreman/issues/15) | VE-09 and VE-11 largely uncovered (one task each) |
+| P4 | [`uas-sec-p4-cc`](https://github.com/samyoon727ca/uas-sec-p4-cc) | Hardened CC image, MSS pipeline and supply chain. VE-09 (CC image hardening), VE-10 (CC command filter and logging), VE-11 (supply-chain pipeline and package integrity); 14 requirements | Mostly an inline MAVLink allowlist, rate-limit and logging proxy for VE-10 (approved idea #16). VE-09 and VE-11 have one task done each; VE-11 is also proposed in [foreman#15](https://github.com/samyoon727ca/foreman/issues/15) | VE-09, VE-11 (one task done each) |
 | P5 | [`uas-sec-p5-fault-sim`](https://github.com/samyoon727ca/uas-sec-p5-fault-sim) | Hardware and firmware security assessment. VE-12 (tamper-evident seal inspection), VE-13 (FC debug port cannot be used); 2 requirements | Emulated fault injection on PX4's secure-boot bootloader (approved idea #18). No VE covers this work | VE-12, VE-13 |
 | P6 | [`uas-sec-oscal`](https://github.com/samyoon727ca/uas-sec-oscal) | RMF-as-code (OSCAL): configuration and procedure evidence. VE-14 (FC parameter baseline), VE-15 (GCS configuration), VE-16 (MSS configuration and records); 12 requirements | Pilots OSCAL continuous-ATO evidence on P2's VE-07 / SR-005 (approved idea #7), which overlaps with [P2](https://github.com/samyoon727ca/uas-sec-p2-verified-boot) | VE-14, VE-15, VE-16 |
 | P7 | None | No slot: the series ends at P6 | Work with no home in P2–P6, such as fault-injection research and the U-Boot FIT fuzz target (idea #20) | None (no VE allocated) |
@@ -85,7 +85,7 @@ Proposal: [samyoon727ca/foreman#29](https://github.com/samyoon727ca/foreman/issu
 
 - **(a) Re-scope P1: add P7.** Add a P7 row with a stated scope (for example "boot-chain robustness: fault injection and fuzzing") and, if the owner wants it traced, new VEs and requirements for it.
   - *VE coverage:* New VEs, if added, are uncovered until P7 produces evidence; existing VEs are unaffected unless the P5 decision moves VE-12/VE-13 there.
-  - *Tables:* README intro ("five follow-on repos, P2–P6") and the evidence table gain P7; the profile table gains a P7 row; `data/verification.csv` gains rows only if new VEs are added, and `tools/validate_trace.py` must then accept `P7` as an evidence repo.
+  - *Tables:* README intro ("five follow-on repos, P2–P6") and the evidence table gain P7; the profile table gains a P7 row; `data/verification.csv` gains rows only if new VEs are added, and `data/series.csv` must gain a P7 row, since `tools/validate_trace.py` accepts as evidence repos only the p_ids listed there.
 - **(b) No P7: fold the work into existing repos.** Put boot-chain fuzzing under P2 (verified boot) and fault injection under P5, with VEs added to those repos if traced.
   - *VE coverage:* Existing allocations unchanged; any new VE is allocated to P2 or P5.
   - *Tables:* No new rows; the P2 and P5 scope descriptions in the README and profile tables widen.
@@ -99,7 +99,7 @@ Proposal: [samyoon727ca/foreman#29](https://github.com/samyoon727ca/foreman/issu
 
 ## Decision log
 
-Record each decision here, then make the allocation change in its own PR.
+Record each decision here, then make the allocation change in its own PR. Besides the tables named under each option, any decision that moves a VE between repos also updates `data/series.csv` (the `ve_ids` of the giving and receiving rows, and a new row for any new repo) and the `evidence_repo` of every requirement the moved VE verifies in `data/requirements.csv`; `tools/validate_trace.py` checks both against the VE's `evidence_repo` in `data/verification.csv`.
 
 | Date | Item | Decision | By |
 |---|---|---|---|
