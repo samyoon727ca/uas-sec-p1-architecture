@@ -6,8 +6,9 @@ For every row of data/series.csv except P1, downloads
 tools/check_series_status.py can check it and tools/render_views.py can use
 it. A missing file (HTTP 404) is a warning and leaves any existing snapshot
 alone; any other HTTP or network error fails. A snapshot whose repo is no
-longer a non-P1 row of series.csv is removed, so a stale file can't keep
-failing the checker. The files are not validated here: run
+longer a non-P1 row of series.csv is removed after every fetch has
+succeeded, so a stale file can't keep failing the checker; a run with a
+fetch error removes nothing. The files are not validated here: run
 check_series_status.py on them next. Exits 1 on any failure.
 Standard library only.
 
@@ -70,11 +71,6 @@ def main(argv: list[str] | None = None) -> int:
     base = args.base_url.rstrip("/")
     repos = series_repos(args.data_dir)
     failed = 0
-    if args.out_dir.is_dir():
-        for stale in sorted(args.out_dir.glob("*.json")):
-            if stale.stem not in repos:
-                stale.unlink()
-                print(f"REMOVED {stale}: {stale.stem} is not a series repo in series.csv")
     for repo in repos:
         url = f"{base}/{repo}/HEAD/series-status.json"
         out = args.out_dir / f"{repo}.json"
@@ -91,6 +87,11 @@ def main(argv: list[str] | None = None) -> int:
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_bytes(body)
         print(f"WROTE   {out}")
+    if not failed and args.out_dir.is_dir():
+        for stale in sorted(args.out_dir.glob("*.json")):
+            if stale.stem not in repos:
+                stale.unlink()
+                print(f"REMOVED {stale}: {stale.stem} is not a series repo in series.csv")
     print(f"{'FAIL' if failed else 'PASS'}: {failed} fetch error(s)")
     return 1 if failed else 0
 

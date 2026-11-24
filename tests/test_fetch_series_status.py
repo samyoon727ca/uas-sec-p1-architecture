@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import contextlib
 import io
+import socket
 import sys
 import tempfile
 import threading
@@ -114,6 +115,40 @@ class FetchSeriesStatusTest(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn(f"ERROR   {P2}:", out)
         self.assertFalse((self.out / f"{P2}.json").exists())
+
+    def test_body_larger_than_max_bytes_fails(self):
+        self.serve(P2, b" " * (fss.MAX_BYTES + 1))
+        code, out = self.fetch()
+        self.assertEqual(code, 1)
+        self.assertIn(f"ERROR   {P2}:", out)
+        self.assertIn(f"larger than {fss.MAX_BYTES} bytes", out)
+        self.assertFalse((self.out / f"{P2}.json").exists())
+
+    def test_body_of_exactly_max_bytes_is_written(self):
+        self.serve(P2, b" " * fss.MAX_BYTES)
+        code, out = self.fetch()
+        self.assertEqual(code, 0, out)
+        self.assertEqual((self.out / f"{P2}.json").stat().st_size, fss.MAX_BYTES)
+
+    def test_connection_refused_fails(self):
+        with socket.socket() as sock:
+            sock.bind(("127.0.0.1", 0))
+            port = sock.getsockname()[1]
+        # Nothing listens on port now, so every fetch is refused.
+        code, out = self.fetch(f"http://127.0.0.1:{port}/samyoon727ca")
+        self.assertEqual(code, 1)
+        self.assertEqual(out.count("ERROR"), 5)
+        self.assertFalse(self.out.exists())
+
+    def test_fetch_error_removes_no_stale_snapshot(self):
+        self.out.mkdir()
+        stale = self.out / "uas-sec-retired.json"
+        stale.write_bytes(b"{}")
+        self.serve(P2, b"oops", status=500)
+        code, out = self.fetch()
+        self.assertEqual(code, 1)
+        self.assertNotIn("REMOVED", out)
+        self.assertTrue(stale.exists())
 
     def test_malformed_json_is_written_then_rejected_by_checker(self):
         self.serve(P2, b'{"p_id": "P2",')
