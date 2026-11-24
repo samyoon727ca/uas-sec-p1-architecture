@@ -84,7 +84,6 @@ STRIDE = {"S", "T", "R", "I", "D", "E"}
 MISSION_IMPACT = {"MI-1", "MI-2", "MI-3", "MI-4"}
 DISPOSITIONS = {"mitigate", "accept"}
 VERIFICATION = {"I", "A", "D", "T"}  # Inspection, Analysis, Demonstration, Test
-EVIDENCE_REPOS = {"P2", "P3", "P4", "P5", "P6"}
 VE_STATUS = {"planned", "passed", "failed"}
 ALIGNMENT = {"aligned", "pending decision"}
 
@@ -252,7 +251,15 @@ def check_threats(rows: list[dict], elements: dict, catalogs: dict, report: Repo
     return index
 
 
-def check_requirements(rows: list[dict], elements: dict, catalogs: dict, report: Report) -> dict[str, dict]:
+def series_evidence_repos(rows: list[dict]) -> set[str]:
+    """The evidence_repo values allowed in requirements and verification
+    events: the series.csv p_ids other than P1, which holds this
+    architecture rather than evidence. series.csv is the single source."""
+    return {row["p_id"] for row in rows if P_ID.match(row["p_id"])} - {"P1"}
+
+
+def check_requirements(rows: list[dict], elements: dict, catalogs: dict, evidence_repos: set[str],
+                       report: Report) -> dict[str, dict]:
     index = index_unique(rows, "req_id", REQ_ID, report)
     for row in index.values():
         where = row["_where"]
@@ -267,8 +274,9 @@ def check_requirements(rows: list[dict], elements: dict, catalogs: dict, report:
             report.error(where, f"allocated_to '{alloc}' is not a known component (process)")
         if row["verification"] not in VERIFICATION:
             report.error(where, f"verification '{row['verification']}' must be one of I,A,D,T")
-        if row["evidence_repo"] not in EVIDENCE_REPOS:
-            report.error(where, f"evidence_repo '{row['evidence_repo']}' must be one of {sorted(EVIDENCE_REPOS)}")
+        if row["evidence_repo"] not in evidence_repos:
+            report.error(where, f"evidence_repo '{row['evidence_repo']}' must be a p_id in series.csv "
+                                f"other than P1 (one of {sorted(evidence_repos)})")
         for approach in split_multi(row["resiliency_approach"]):
             if approach not in catalogs["resiliency"]:
                 report.error(where, f"'{approach}' is not an SP 800-160 Vol. 2 Rev. 1 'Technique: Approach' "
@@ -294,7 +302,7 @@ def check_trace(rows: list[dict], threats: dict, reqs: dict, report: Report) -> 
     return list(links)
 
 
-def check_verification(rows: list[dict], reqs: dict, report: Report) -> dict[str, dict]:
+def check_verification(rows: list[dict], reqs: dict, evidence_repos: set[str], report: Report) -> dict[str, dict]:
     """Every requirement must be covered by at least one verification event
     whose method and evidence repo match the requirement's. A passed or
     failed event must link its evidence."""
@@ -305,8 +313,9 @@ def check_verification(rows: list[dict], reqs: dict, report: Report) -> dict[str
         require(row, ["title", "procedure", "pass_criteria"], report)
         if row["method"] not in VERIFICATION:
             report.error(where, f"method '{row['method']}' must be one of I,A,D,T")
-        if row["evidence_repo"] not in EVIDENCE_REPOS:
-            report.error(where, f"evidence_repo '{row['evidence_repo']}' must be one of {sorted(EVIDENCE_REPOS)}")
+        if row["evidence_repo"] not in evidence_repos:
+            report.error(where, f"evidence_repo '{row['evidence_repo']}' must be a p_id in series.csv "
+                                f"other than P1 (one of {sorted(evidence_repos)})")
         if row["status"] not in VE_STATUS:
             report.error(where, f"status '{row['status']}' must be one of {sorted(VE_STATUS)}")
         links = split_multi(row["evidence"])
@@ -334,10 +343,10 @@ def check_verification(rows: list[dict], reqs: dict, report: Report) -> dict[str
     return index
 
 
-def check_series(rows: list[dict], events: dict, reqs: dict, report: Report) -> dict[str, dict]:
+def check_series(rows: list[dict], events: dict, report: Report) -> dict[str, dict]:
     """series.csv is the manifest of series repos. Every verification event
-    is listed in exactly one row, the row of its evidence repo, and every
-    evidence repo is a known p_id."""
+    is listed in exactly one row, the row of its evidence repo. That every
+    evidence repo is a p_id here is checked against series_evidence_repos()."""
     index = index_unique(rows, "p_id", P_ID, report)
     repos: dict[str, str] = {}
     listed: dict[str, dict] = {}
@@ -366,10 +375,6 @@ def check_series(rows: list[dict], events: dict, reqs: dict, report: Report) -> 
     for ve, event in events.items():
         if ve not in listed:
             report.error(event["_where"], f"{ve} is not listed in series.csv")
-    for row in [*reqs.values(), *events.values()]:
-        repo = row["evidence_repo"]
-        if repo and repo not in index:
-            report.error(row["_where"], f"evidence_repo '{repo}' is not a p_id in series.csv")
     return index
 
 
@@ -410,10 +415,11 @@ def validate(data_dir: Path, allow_unanalyzed: bool = False) -> Report:
 
     elements = check_elements(loaded["elements.csv"], report)
     threats = check_threats(loaded["threats.csv"], elements, catalogs, report)
-    reqs = check_requirements(loaded["requirements.csv"], elements, catalogs, report)
+    evidence_repos = series_evidence_repos(loaded["series.csv"])
+    reqs = check_requirements(loaded["requirements.csv"], elements, catalogs, evidence_repos, report)
     links = check_trace(loaded["trace.csv"], threats, reqs, report)
-    events = check_verification(loaded["verification.csv"], reqs, report)
-    series = check_series(loaded["series.csv"], events, reqs, report)
+    events = check_verification(loaded["verification.csv"], reqs, evidence_repos, report)
+    series = check_series(loaded["series.csv"], events, report)
     check_closure(elements, threats, reqs, links, report, allow_unanalyzed)
 
     report.summary = (
