@@ -84,7 +84,7 @@ STRIDE = {"S", "T", "R", "I", "D", "E"}
 MISSION_IMPACT = {"MI-1", "MI-2", "MI-3", "MI-4"}
 DISPOSITIONS = {"mitigate", "accept"}
 VERIFICATION = {"I", "A", "D", "T"}  # Inspection, Analysis, Demonstration, Test
-VE_STATUS = {"planned", "passed", "failed"}
+VE_STATUS = {"planned", "partly evidenced", "passed", "failed"}
 ALIGNMENT = {"aligned", "pending decision"}
 
 
@@ -305,7 +305,7 @@ def check_trace(rows: list[dict], threats: dict, reqs: dict, report: Report) -> 
 def check_verification(rows: list[dict], reqs: dict, evidence_repos: set[str], report: Report) -> dict[str, dict]:
     """Every requirement must be covered by at least one verification event
     whose method and evidence repo match the requirement's. A passed or
-    failed event must link its evidence."""
+    failed event, or one partly evidenced, must link its evidence."""
     index = index_unique(rows, "ve_id", VE_ID, report)
     covered: set[str] = set()
     for row in index.values():
@@ -319,7 +319,7 @@ def check_verification(rows: list[dict], reqs: dict, evidence_repos: set[str], r
         if row["status"] not in VE_STATUS:
             report.error(where, f"status '{row['status']}' must be one of {sorted(VE_STATUS)}")
         links = split_multi(row["evidence"])
-        if row["status"] in {"passed", "failed"} and not links:
+        if row["status"] in {"partly evidenced", "passed", "failed"} and not links:
             report.error(where, f"status '{row['status']}' requires 'evidence'")
         for link in links:
             if not EVIDENCE_URL.match(link):

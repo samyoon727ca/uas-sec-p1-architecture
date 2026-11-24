@@ -84,6 +84,17 @@ class SeriesTableTest(unittest.TestCase):
         (self.dir / "uas-sec-p2-verified-boot.json").write_text(json.dumps(doc), encoding="utf-8")
         self.assertEqual(self.status(P2), f"partly evidenced: [VE-07]({URL}); planned: VE-08")
 
+    def test_partial_snapshot_falls_back_per_ve(self):
+        events = dict(EVENTS, **{"VE-08": {"status": "passed", "evidence": "u8", "req_ids": "SR-006"}})
+        doc = {"p_id": "P2", "repo": "uas-sec-p2-verified-boot", "p1_commit": SHA, "ves": [
+            {"ve_id": "VE-07", "status": "partly evidenced", "evidence": [URL]}]}
+        (self.dir / "uas-sec-p2-verified-boot.json").write_text(json.dumps(doc), encoding="utf-8")
+        self.assertEqual(self.status(P2, events), f"partly evidenced: [VE-07]({URL}); passed: [VE-08](u8)")
+
+    def test_alignment_anchor_drops_punctuation(self):
+        self.alignment.write_text("# Memo\n\n## P6: RMF-as-code (OSCAL)\n", encoding="utf-8")
+        self.assertEqual(rv.alignment_link("P6", self.alignment), "docs/series-alignment.md#p6-rmf-as-code-oscal")
+
     def test_invalid_snapshot_fails(self):
         doc = {"p_id": "P2", "repo": "uas-sec-p2-verified-boot", "p1_commit": SHA, "ves": [
             {"ve_id": "VE-07", "status": "done", "evidence": ["https://example.com/x"]}]}

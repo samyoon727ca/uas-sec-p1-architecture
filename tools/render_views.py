@@ -263,7 +263,6 @@ def series_table(snapshot_dir: Path = SERIES_STATUS, alignment: Path = ALIGNMENT
     return "\n".join(lines)
 
 
-
 VIEWS = {
     "threat-matrix": (ROOT / "docs/05-threat-model.md", threat_matrix),
     "requirements-table": (ROOT / "docs/07-requirements.md", requirements_table),

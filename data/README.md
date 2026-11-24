@@ -78,8 +78,8 @@ Every requirement needs at least one parent threat. Duplicate pairs are rejected
 | `method` | `I`, `A`, `D` or `T` |
 | `evidence_repo` | `P2` to `P6` |
 | `req_ids` | One or more known requirements. Each must have the same method and evidence repo as the event |
-| `status` | `planned`, `passed` or `failed` |
-| `evidence` | Required when `status` is `passed` or `failed`; optional while `planned`. One or more links, separated by `;`, each a GitHub URL pinned to a full commit SHA: `https://github.com/<owner>/<repo>/blob/<sha>/<path>` (or `tree/`) |
+| `status` | `planned`, `partly evidenced`, `passed` or `failed` |
+| `evidence` | Required when `status` is `partly evidenced`, `passed` or `failed`; optional while `planned`. One or more links, separated by `;`, each a GitHub URL pinned to a full commit SHA: `https://github.com/<owner>/<repo>/blob/<sha>/<path>` (or `tree/`) |
 
 Every requirement must be covered by at least one event whose method and evidence repo match its own.
 

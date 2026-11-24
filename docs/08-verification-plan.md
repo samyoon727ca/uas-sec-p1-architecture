@@ -18,12 +18,12 @@ The events live in [`data/verification.csv`](../data/verification.csv), with the
 Generated from the CSVs by `tools/render_views.py`. CI fails if this view drifts from the data. The requirements table in [§7](07-requirements.md) shows the reverse mapping, in its "Verified by" column.
 
 <!-- BEGIN GENERATED: verification-events -->
-17 verification events: 17 planned.
+17 verification events: 1 partly evidenced, 16 planned.
 
 | ID | Event | Method | Evidence | Verifies | Status | Pass criteria |
 |---|---|---|---|---|---|---|
 | VE-01 | Spoofed GCS heartbeats do not suppress the data-link-loss failsafe | T | P3 | SR-001, SR-002, SR-004 | planned | FC enters Return within COM_DL_LOSS_T plus a stated tolerance; CC and GCS counters show injected packets dropped; control run shows the failsafe suppressed. |
-| VE-02 | Signed C2 works with the pinned versions | D | P3 | SR-003, SR-025 | [planned](https://github.com/samyoon727ca/uas-sec-p3-pki/blob/813ad2fb61338fce87b7a776267d26b56c3a3175/evidence/ve02-phaseA/ve02-phaseA.md) | Signed commands execute; unsigned and wrongly signed commands have no effect; the GCS alerts on unsigned telemetry. Closes OI-01. |
+| VE-02 | Signed C2 works with the pinned versions | D | P3 | SR-003, SR-025 | [partly evidenced](https://github.com/samyoon727ca/uas-sec-p3-pki/blob/813ad2fb61338fce87b7a776267d26b56c3a3175/evidence/ve02-phaseA/ve02-phaseA.md) | Signed commands execute; unsigned and wrongly signed commands have no effect; the GCS alerts on unsigned telemetry. Closes OI-01. |
 | VE-03 | CC accepts only signed, newer update images | T | P3 | SR-007 | planned | Only the valid newer image installs; each rejection is logged. |
 | VE-04 | CC autonomy ignores unsigned or altered FC telemetry | T | P3 | SR-015 | planned | Autonomy decisions use only frames with valid signatures; injected frames are logged and discarded. |
 | VE-05 | Imagery and flight logs are unreadable without the MSS key | D | P3 | SR-017, SR-019 | planned | Copies from the vehicle are unreadable; the MSS decrypts both. |
