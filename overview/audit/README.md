@@ -12,3 +12,5 @@
 When the owner triages a finding, record the outcome in the repo it concerns (P1 or P2) and in a later audit. Do not edit this copy: replace it with that audit's file and update the hashes above.
 
 P1 records the audit items it has closed since the audit in [`closures.md`](closures.md).
+
+[`triage.md`](triage.md) tracks the open status of every P1 audit item and classes each one as mechanical, owner decision or closed. The items that need an owner decision have their options in [`owner-decisions.md`](owner-decisions.md).
