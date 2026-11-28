@@ -16,7 +16,8 @@ The six CSVs in `data/` are the single source of truth (`data/README.md`). The p
 
 ```text
 data/*.csv + data/catalogs/*.csv
-   ├─ tools/validate_trace.py ──> pass/fail (trace rules)
+   ├─ tools/validate_trace.py ──> pass/fail (trace rules, and counts)
+   │      ▲ README.md, brief/pdr-brief.md (counts they state)
    ├─ tools/render_views.py ───> generated tables in docs/05–08 and README series table
    │      ▲ data/series-status/*.json  <── tools/fetch_series_status.py <── P2–P6 repos
    │      └─ checked by tools/check_series_status.py
@@ -27,7 +28,7 @@ docs/04-architecture.md + README.md (Mermaid) ──> brief/build.sh ──> bri
 ```
 
 1. **Data.** `data/elements.csv` lists the 46 data-flow-diagram elements (40 STRIDE elements plus 6 trust boundaries). `data/threats.csv` holds 66 threats, `data/requirements.csv` 45 requirements, `data/trace.csv` the threat-to-requirement links, `data/verification.csv` the 17 VEs with status and evidence, and `data/series.csv` which repo owns which VEs.
-2. **Validation.** `tools/validate_trace.py` checks schemas, ID formats, references, STRIDE applicability per element type (`tools/validate_trace.py:56`), coverage of every element by threats, every mitigated threat by a requirement and every requirement by a VE of the same method and repo, catalog IDs, and that a VE marked `partly evidenced`, `passed` or `failed` links evidence, every link pinned to a full commit SHA (`tools/validate_trace.py:322-326`). The allowed evidence repos are the `series.csv` p_ids other than P1 (`tools/validate_trace.py:254`).
+2. **Validation.** `tools/validate_trace.py` checks schemas, ID formats, references, STRIDE applicability per element type (`tools/validate_trace.py:61`), coverage of every element by threats, every mitigated threat by a requirement and every requirement by a VE of the same method and repo, catalog IDs, and that a VE marked `partly evidenced`, `passed` or `failed` links evidence, every link pinned to a full commit SHA (`tools/validate_trace.py:327-331`). The allowed evidence repos are the `series.csv` p_ids other than P1 (`tools/validate_trace.py:259`). It also checks every count that `README.md` and `brief/pdr-brief.md` state (threats, elements, requirements, VEs and their breakdowns) against the CSVs, at the places listed in `COUNT_CLAIMS`; a listed pattern that matches nothing is an error. It reads the two files under `--root`, which defaults to the parent of `--data-dir`; `--skip-counts` turns the count check off.
 3. **Doc views.** `tools/render_views.py` rewrites five generated blocks: the threat matrix, requirements table, resiliency approaches, verification events and the README series table (`tools/render_views.py:266`). The series table uses a repo's status snapshot when one exists and falls back to `data/verification.csv` per VE otherwise (`data/series-status/README.md`).
 4. **Series status.** `tools/fetch_series_status.py` downloads each repo's `series-status.json`, capped at 1 MiB (`tools/fetch_series_status.py:31`), and removes snapshots of repos no longer in `series.csv` only after every fetch succeeds. `tools/check_series_status.py` then rejects files that claim VEs not allocated to their repo, use unknown IDs or statuses, or link unpinned evidence.
 5. **SysML v2 model.** `model/sysml/uas_architecture.sysml` is hand-written; `tools/gen_sysml.py` generates `model/sysml/uas_security.sysml` from the CSVs. `tools/sysml/validate.sh` downloads the pinned Pilot Implementation and runs `tools/sysml/ValidateSysML.java` over both files. Conventions are in `model/sysml/README.md`.
@@ -86,14 +87,14 @@ What needs something special, and how CI handles it (`.github/workflows/validate
 
 ## What's verified
 
-All 120 unit tests pass with `python -m unittest discover -s tests`, and `validate_trace.py`, `render_views.py --check` and `gen_sysml.py --check` pass on the current data (run locally on Python 3.12.1 while writing this guide).
+All 131 unit tests pass with `python -m unittest discover -s tests`, and `validate_trace.py`, `render_views.py --check` and `gen_sysml.py --check` pass on the current data (run locally on Python 3.12.1 while writing this guide).
 
 - **Trace rules** (every rule listed in the README's "Verification evidence" section): `tests/test_validate_trace.py` builds small datasets that break each rule (STRIDE applicability, missing parents, method and repo mismatch, unpinned evidence, catalog IDs, series manifest rules) and checks the real baseline passes (`test_baseline_is_valid`).
 - **Generated views:** `tests/test_render_views.py` covers marker splicing, status cells, snapshot fallback per VE and rejection of an invalid snapshot; CI's `render_views.py --check` catches drift in the committed docs.
 - **Series status:** `tests/test_check_series_status.py` (one fixture per error in `tests/fixtures/series-status/`) and `tests/test_fetch_series_status.py` (404 keeps a snapshot, other errors fail, size cap at and over 1 MiB, stale snapshot removed only when every fetch succeeds, `file://` base URL).
 - **SysML:** `tests/test_gen_sysml.py` checks escaping, that every element has an alias, and that the committed model is current; the `sysml` CI job validates both model files on the OMG Pilot Implementation.
 - **Overview generator:** `tests/test_gen_overview.py` covers front matter, stubs and chapters, unknown generator names failing, counts coming from data, audit findings rendering, and the P2 pin format. The `overview` CI job checks the snapshot against P2 over the network.
-- **Brief:** CI checks only that the diagram sources match the docs and that the PDF builds.
+- **Brief:** CI checks that the diagram sources match the docs, that the PDF builds, and (in the `traceability` job, via `COUNT_CLAIMS` in `tools/validate_trace.py`) that every count `brief/pdr-brief.md` states matches `data/`. The same rule checks the README's counts. `tests/test_validate_trace.py` checks that the repo's counts pass, that editing any checked number fails, and that a pattern matching nothing fails.
 
 Not tested or only documented:
 
@@ -121,7 +122,7 @@ Not tested or only documented:
 - **OI-02:** per-node authentication to the FC; trade study in P3. **OI-03:** no independent C2 path (the Path Diversity gap in `docs/06-cyber-resiliency.md`); deferred to a later P1 revision.
 - **DD-06 re-pin** from PX4 `v1.18.0-rc1` to `v1.18.0` once released (`docs/references.md:7`).
 - **Series alignment:** P4, P5 and P6 are "pending decision" in `data/series.csv`; every decision in `docs/series-alignment.md` is "Pending owner decision".
-- **Audit findings open:** the 2026-10-13 audit's findings are rendered in the overview's limitations chapter; `overview/audit/closures.md` records one closure, and says the other items it lists are still open.
+- **Audit findings open:** the 2026-10-13 audit's findings are rendered in the overview's limitations chapter; `overview/audit/closures.md` records two closures, P1-06 (2026-11-19) and P1-01 with P1-08 (2026-11-27), and says the other items it lists are still open.
 - **Closure note out of date:** `overview/audit/closures.md` says the README's P2 row reads `In progress (emulation only)`, but the generated row now reads `planned: VE-07, VE-08` with an emulation-only evidence link, because the series table is generated from `data/verification.csv` (where VE-07 and VE-08 are `planned`).
 - **No series status snapshots yet:** `data/series-status/` holds only its README, so the series table currently comes entirely from `data/verification.csv`.
 - **Overview covers only P2's data:** the generator reads only P2's snapshot; P3 to P6 are roadmap stubs (`overview/README.md`, "Chapters and stubs").

@@ -9,7 +9,12 @@ under data/catalogs/, and that the counts README.md and brief/pdr-brief.md
 state match data/. Exits 1 if any error is found. Standard library only.
 
 Usage:
-    python tools/validate_trace.py [--data-dir data] [--allow-unanalyzed]
+    python tools/validate_trace.py [--data-dir data] [--root DIR]
+                                   [--skip-counts] [--allow-unanalyzed]
+
+The count check reads README.md and brief/pdr-brief.md under --root, which
+defaults to the parent of --data-dir. Pass --root to point it elsewhere, or
+--skip-counts to validate a data folder that has no README or brief beside it.
 """
 from __future__ import annotations
 
@@ -564,14 +569,32 @@ def validate(data_dir: Path, allow_unanalyzed: bool = False, root: Path | None =
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--data-dir", type=Path, default=Path(__file__).resolve().parent.parent / "data")
+    parser.add_argument(
+        "--data-dir", type=Path, default=Path(__file__).resolve().parent.parent / "data",
+        help="folder holding the CSVs and catalogs/ (default: the repo's data/)",
+    )
+    parser.add_argument(
+        "--root", type=Path, default=None,
+        help="folder holding README.md and brief/pdr-brief.md for the count check "
+             "(default: the parent of --data-dir)",
+    )
+    parser.add_argument(
+        "--skip-counts", action="store_true",
+        help="don't check the counts stated in README.md and brief/pdr-brief.md",
+    )
     parser.add_argument(
         "--allow-unanalyzed", action="store_true",
         help="report STRIDE elements with no threat rows as warnings, not errors",
     )
     args = parser.parse_args(argv)
 
-    report = validate(args.data_dir, args.allow_unanalyzed, root=args.data_dir.resolve().parent)
+    if args.skip_counts and args.root is not None:
+        parser.error("--root and --skip-counts can't be used together")
+    if args.skip_counts:
+        root = None
+    else:
+        root = args.root if args.root is not None else args.data_dir.resolve().parent
+    report = validate(args.data_dir, args.allow_unanalyzed, root=root)
     for w in report.warnings:
         print(f"WARNING {w}")
     for e in report.errors:

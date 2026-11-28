@@ -511,6 +511,29 @@ class CountClaimsTest(unittest.TestCase):
                 self.assertEqual(vt.main(["--data-dir", str(Path(tmp) / "data")]), 1)
         self.assertIn("README.md: file not found", out.getvalue())
 
+    def test_cli_root_option_points_the_count_check_elsewhere(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            shutil.copytree(ROOT / "data", Path(tmp) / "data")
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(vt.main(["--data-dir", str(Path(tmp) / "data"), "--root", str(ROOT)]), 0)
+            (Path(tmp) / "README.md").write_text(
+                (ROOT / "README.md").read_text(encoding="utf-8").replace("42 MI-1, ", "41 MI-1, "),
+                encoding="utf-8")
+            (Path(tmp) / "brief").mkdir()
+            shutil.copy(ROOT / "brief" / "pdr-brief.md", Path(tmp) / "brief" / "pdr-brief.md")
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                self.assertEqual(vt.main(["--data-dir", str(ROOT / "data"), "--root", tmp]), 1)
+        self.assertIn("states 41 MI-1 threats, but data/ has 42", out.getvalue())
+
+    def test_cli_skip_counts(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            shutil.copytree(ROOT / "data", Path(tmp) / "data")
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                self.assertEqual(vt.main(["--data-dir", str(Path(tmp) / "data"), "--skip-counts"]), 0)
+        self.assertNotIn("file not found", out.getvalue())
+
 
 if __name__ == "__main__":
     unittest.main()
