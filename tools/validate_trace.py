@@ -3,10 +3,10 @@
 
 Checks schema, ID format and uniqueness, referential integrity, threat
 dispositions, requirement quality, STRIDE-per-element applicability and
-coverage, verification coverage, the series manifest, and that EMB3D,
-ATT&CK for ICS and NIST SP 800-160 Vol. 2 entries exist in the pinned
-catalogs under data/catalogs/.
-Exits 1 if any error is found. Standard library only.
+coverage, verification coverage, the series manifest, that EMB3D, ATT&CK
+for ICS and NIST SP 800-160 Vol. 2 entries exist in the pinned catalogs
+under data/catalogs/, and that the counts README.md and brief/pdr-brief.md
+state match data/. Exits 1 if any error is found. Standard library only.
 
 Usage:
     python tools/validate_trace.py [--data-dir data] [--allow-unanalyzed]
@@ -406,7 +406,136 @@ def check_closure(elements, threats, reqs, links, report: Report, allow_unanalyz
                 report.error(row["_where"], msg)
 
 
-def validate(data_dir: Path, allow_unanalyzed: bool = False) -> Report:
+def count_facts(elements, threats, reqs, events, catalogs) -> dict[str, int]:
+    """The counts that README.md and brief/pdr-brief.md state, from data/."""
+    approaches = {a for r in reqs.values() for a in split_multi(r["resiliency_approach"])}
+    facts = {
+        "elements": len(elements),
+        "STRIDE elements": sum(e["type"] in STRIDE_ELEMENT_TYPES for e in elements.values()),
+        "trust boundaries": sum(e["type"] == "trust_boundary" for e in elements.values()),
+        "threats": len(threats),
+        "mitigated threats": sum(t["disposition"] == "mitigate" for t in threats.values()),
+        "accepted threats": sum(t["disposition"] == "accept" for t in threats.values()),
+        "threats with an EMB3D ID": sum(bool(split_multi(t["emb3d"])) for t in threats.values()),
+        "threats with an ATT&CK for ICS ID": sum(bool(split_multi(t["attack_ics"])) for t in threats.values()),
+        "requirements": len(reqs),
+        "verification events": len(events),
+        "planned verification events": sum(e["status"] == "planned" for e in events.values()),
+        "resiliency techniques used": len({a.split(":")[0] for a in approaches}),
+        "resiliency approaches used": len(approaches),
+        "resiliency techniques": len({a.split(":")[0] for a in catalogs["resiliency"]}),
+        "resiliency approaches": len(catalogs["resiliency"]),
+    }
+    for mi in sorted(MISSION_IMPACT):
+        facts[f"{mi} threats"] = sum(t["mission_impact"] == mi for t in threats.values())
+    for eid, row in elements.items():
+        if row["type"] == "process":
+            facts[f"requirements allocated to {eid}"] = sum(r["allocated_to"] == eid for r in reqs.values())
+    for method in sorted(VERIFICATION):
+        facts[f"requirements verified by {method}"] = sum(r["verification"] == method for r in reqs.values())
+    for repo in sorted({r["evidence_repo"] for r in reqs.values()}):
+        facts[f"requirements with evidence repo {repo}"] = sum(r["evidence_repo"] == repo for r in reqs.values())
+    return facts
+
+
+# Every place README.md and brief/pdr-brief.md state a count taken from data/:
+# (file relative to the repo root, regex with exactly one group capturing the
+# number, fact from count_facts). Each pattern must match at least once, so a
+# reworded sentence fails here instead of going unchecked; update its pattern
+# in the same change. Every match must equal the fact.
+COUNT_CLAIMS = [
+    ("README.md", r"\b(\d+) of \d+ verification events are planned", "planned verification events"),
+    ("README.md", r"\b\d+ of (\d+) verification events are planned", "verification events"),
+    ("README.md", r"^(\d+) threats, analyzed STRIDE per element", "threats"),
+    ("README.md", r"\bacross all (\d+) STRIDE elements", "STRIDE elements"),
+    ("README.md", r"\((\d+) data-flow-diagram elements", "elements"),
+    ("README.md", r"\bless (\d+) trust boundaries\)", "trust boundaries"),
+    ("README.md", r"\b(\d+) MI-1\b", "MI-1 threats"),
+    ("README.md", r"\b(\d+) MI-2\b", "MI-2 threats"),
+    ("README.md", r"\b(\d+) MI-3\b", "MI-3 threats"),
+    ("README.md", r"\b(\d+) MI-4\b", "MI-4 threats"),
+    ("README.md", r"\b(\d+) are mitigated\b", "mitigated threats"),
+    ("README.md", r"\b(\d+) accepted with rationale", "accepted threats"),
+    ("README.md", r"^(\d+) derived \"shall\" requirements", "requirements"),
+    ("README.md", r"\bCC (\d+)\b", "requirements allocated to CMP-CC"),
+    ("README.md", r"\bMSS (\d+)\b", "requirements allocated to CMP-MSS"),
+    ("README.md", r"\bFC (\d+)\b", "requirements allocated to CMP-FC"),
+    ("README.md", r"\bGCS (\d+)\b", "requirements allocated to CMP-GCS"),
+    ("README.md", r"\bTest (\d+)\b", "requirements verified by T"),
+    ("README.md", r"\bInspection (\d+)\b", "requirements verified by I"),
+    ("README.md", r"\bDemonstration (\d+)\b", "requirements verified by D"),
+    ("README.md", r"\buses (\d+) of the \d+ NIST SP 800-160", "resiliency techniques used"),
+    ("README.md", r"\buses \d+ of the (\d+) NIST SP 800-160", "resiliency techniques"),
+    ("README.md", r"^(\d+) verification events cover all \d+ requirements", "verification events"),
+    ("README.md", r"^\d+ verification events cover all (\d+) requirements", "requirements"),
+    ("README.md", r"\| (\d+) verification events covering all requirements", "verification events"),
+    ("brief/pdr-brief.md", r"\b(\d+) elements in all\b", "elements"),
+    ("brief/pdr-brief.md", r"^## 4\. Threat model: (\d+) threats", "threats"),
+    ("brief/pdr-brief.md", r"\*\*Coverage:\*\* all (\d+) STRIDE elements", "STRIDE elements"),
+    ("brief/pdr-brief.md", r"\bEMB3D v2\.0\.2 \((\d+) threats\)", "threats with an EMB3D ID"),
+    ("brief/pdr-brief.md", r"\bATT&CK for ICS v19\.2 \((\d+)\)", "threats with an ATT&CK for ICS ID"),
+    ("brief/pdr-brief.md", r"\b(\d+) MI-1\b", "MI-1 threats"),
+    ("brief/pdr-brief.md", r"\b(\d+) MI-2\b", "MI-2 threats"),
+    ("brief/pdr-brief.md", r"\b(\d+) MI-3\b", "MI-3 threats"),
+    ("brief/pdr-brief.md", r"\b(\d+) MI-4\b", "MI-4 threats"),
+    ("brief/pdr-brief.md", r"\b(\d+) mitigated, ", "mitigated threats"),
+    ("brief/pdr-brief.md", r"\b(\d+) accepted with rationale", "accepted threats"),
+    ("brief/pdr-brief.md", r"^## 6\. Requirements: (\d+) derived", "requirements"),
+    ("brief/pdr-brief.md", r"\bCC (\d+)\b", "requirements allocated to CMP-CC"),
+    ("brief/pdr-brief.md", r"\bMSS (\d+)\b", "requirements allocated to CMP-MSS"),
+    ("brief/pdr-brief.md", r"\bFC (\d+)\b", "requirements allocated to CMP-FC"),
+    ("brief/pdr-brief.md", r"\bGCS (\d+)\b", "requirements allocated to CMP-GCS"),
+    ("brief/pdr-brief.md", r"\bTest (\d+)\b", "requirements verified by T"),
+    ("brief/pdr-brief.md", r"\bInspection (\d+)\b", "requirements verified by I"),
+    ("brief/pdr-brief.md", r"\bDemonstration (\d+)\b", "requirements verified by D"),
+    ("brief/pdr-brief.md", r"\b(\d+) of \d+ techniques, through", "resiliency techniques used"),
+    ("brief/pdr-brief.md", r"\b\d+ of (\d+) techniques, through", "resiliency techniques"),
+    ("brief/pdr-brief.md", r"\bthrough (\d+) of \d+ approaches", "resiliency approaches used"),
+    ("brief/pdr-brief.md", r"\bthrough \d+ of (\d+) approaches", "resiliency approaches"),
+    ("brief/pdr-brief.md", r"^(\d+) verification events cover all \d+ requirements", "verification events"),
+    ("brief/pdr-brief.md", r"^\d+ verification events cover all (\d+) requirements", "requirements"),
+    ("brief/pdr-brief.md", r"^\| P2 \| [^|\n]+ \| (\d+) \|", "requirements with evidence repo P2"),
+    ("brief/pdr-brief.md", r"^\| P3 \| [^|\n]+ \| (\d+) \|", "requirements with evidence repo P3"),
+    ("brief/pdr-brief.md", r"^\| P4 \| [^|\n]+ \| (\d+) \|", "requirements with evidence repo P4"),
+    ("brief/pdr-brief.md", r"^\| P5 \| [^|\n]+ \| (\d+) \|", "requirements with evidence repo P5"),
+    ("brief/pdr-brief.md", r"^\| P6 \| [^|\n]+ \| (\d+) \|", "requirements with evidence repo P6"),
+]
+
+
+def check_counts(root: Path, facts: dict[str, int], report: Report, claims=COUNT_CLAIMS) -> None:
+    """Each count that a claim's pattern captures in its file must equal the
+    fact computed from data/. A pattern that matches nothing is an error."""
+    texts: dict[str, str | None] = {}
+    for rel, pattern, fact in claims:
+        if rel not in texts:
+            path = root / rel
+            texts[rel] = path.read_text(encoding="utf-8") if path.is_file() else None
+            if texts[rel] is None:
+                report.error(rel, "file not found (count check)")
+        text = texts[rel]
+        if text is None:
+            continue
+        regex = re.compile(pattern, re.MULTILINE)
+        if regex.groups != 1:
+            report.error(rel, f"count pattern '{pattern}' must have exactly one group")
+            continue
+        if fact not in facts:
+            report.error(rel, f"count pattern '{pattern}' names unknown fact '{fact}'")
+            continue
+        matches = list(regex.finditer(text))
+        if not matches:
+            report.error(rel, f"count pattern '{pattern}' ({fact}) matches nothing; "
+                              f"update it in COUNT_CLAIMS if the sentence was reworded")
+        for m in matches:
+            stated = int(m.group(1))
+            if stated != facts[fact]:
+                line = text.count("\n", 0, m.start(1)) + 1
+                report.error(f"{rel}:{line}", f"states {stated} {fact}, but data/ has {facts[fact]}")
+
+
+def validate(data_dir: Path, allow_unanalyzed: bool = False, root: Path | None = None) -> Report:
+    """Validate data_dir. If root is given, also check the counts that
+    root/README.md and root/brief/pdr-brief.md state against the data."""
     report = Report()
     loaded = {name: load(data_dir / name, report) for name in SCHEMAS}
     catalogs = load_catalogs(data_dir, report)
@@ -421,6 +550,8 @@ def validate(data_dir: Path, allow_unanalyzed: bool = False) -> Report:
     events = check_verification(loaded["verification.csv"], reqs, evidence_repos, report)
     series = check_series(loaded["series.csv"], events, report)
     check_closure(elements, threats, reqs, links, report, allow_unanalyzed)
+    if root is not None:
+        check_counts(root, count_facts(elements, threats, reqs, events, catalogs), report)
 
     report.summary = (
         f"{len(elements)} elements, {len(threats)} threats "
@@ -440,7 +571,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    report = validate(args.data_dir, args.allow_unanalyzed)
+    report = validate(args.data_dir, args.allow_unanalyzed, root=args.data_dir.resolve().parent)
     for w in report.warnings:
         print(f"WARNING {w}")
     for e in report.errors:

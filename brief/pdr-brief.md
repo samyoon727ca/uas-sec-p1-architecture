@@ -26,7 +26,7 @@ style: |
 
 A PX4 flight controller, a Linux companion computer, a ground control station and a MAVLink C2 link, secured from threat model to verification plan.
 
-<span class="small">github.com/samyoon727ca/uas-sec-p1-architecture · every number here is generated from the repo's checked data</span>
+<span class="small">github.com/samyoon727ca/uas-sec-p1-architecture · every count taken from the repo's data is checked against it in CI</span>
 
 ---
 
@@ -71,8 +71,8 @@ A PX4 flight controller, a Linux companion computer, a ground control station an
 
 ## 4. Threat model: 66 threats, STRIDE per element
 
-- **Coverage:** 40 elements, using Microsoft's STRIDE-per-element chart, which the validator enforces.
-- **Framework mapping:** EMB3D v2.0.2 (43 threats) and ATT&CK for ICS v19.2 (52). IDs are checked against pinned catalogs, so revoked IDs fail.
+- **Coverage:** all 40 STRIDE elements, using Microsoft's STRIDE-per-element chart, which the validator enforces.
+- **Framework mapping:** EMB3D v2.0.2 (44 threats) and ATT&CK for ICS v19.2 (53). IDs are checked against pinned catalogs, so revoked IDs fail.
 - **Impact, consequence only:** 42 MI-1 · 16 MI-2 · 6 MI-3 · 2 MI-4. 63 mitigated, 3 accepted with rationale.
 
 | Priority threat | Impact | Mitigated by |
@@ -133,7 +133,7 @@ A PX4 flight controller, a Linux companion computer, a ground control station an
 
 ## 8. Rigor: a machine-checked digital thread
 
-- **Five CSVs are the single source of truth:** elements, threats, requirements, trace and verification.
+- **The CSVs in `data/` are the single source of truth:** elements, threats, requirements, trace, verification and the series manifest.
 - **The CI validator fails the build** on an orphaned ID, an unresolved threat, a misapplied STRIDE category, an unknown EMB3D, ATT&CK or SP 800-160 entry, or a requirement without a matching verification event.
 - **Generated, drift-checked views:** the doc tables and the SysML v2 threats, requirements and verification cases.
 - **SysML v2 model** (architecture hand-written, security content generated) validates on the **OMG SysML v2 Pilot Implementation** in CI, headless, against a SHA-256-pinned release: 0 errors, 0 warnings.
