@@ -3,17 +3,29 @@
 Each test keeps one audit item closed (overview/audit/closures.md): P1-02
 (README names the tool behind each check), P1-12 (every source in
 docs/references.md has a pinned version), P1-13 (data/README.md names every
-tool that reads data/), P1-14 (the Java version matches CI) and P1-15 (no
-"Still open" item says it is closed).
+tool that reads data/), P1-14 (the Java version matches CI), P1-15 (no
+"Still open" item says it is closed), P1-10 (CI pins exact toolchain versions),
+P1-11 (no deprecated package in the npm lockfiles, apart from a listed
+exception) and A-33 (.gitattributes makes LF the default line ending).
 """
 from __future__ import annotations
 
+import json
 import re
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 WORKFLOW = ROOT / ".github" / "workflows" / "validate.yml"
+WORKFLOWS = (WORKFLOW, ROOT / ".github" / "workflows" / "series-status.yml")
+LOCKFILES = (ROOT / "brief" / "package-lock.json", ROOT / "overview" / "package-lock.json")
+
+# Lockfile entries that npm marks deprecated and that stay for a stated reason.
+# mathjax-full 3.2.2 is required by @marp-team/marp-core 4.4.0 (through
+# marp-cli 4.5.1); replacing it means moving Marp, which P1-11 left out.
+DEPRECATED_ALLOWED = {
+    "brief/package-lock.json": {"node_modules/mathjax-full"},
+}
 
 # The tools/*.py that read files under data/. test_data_readers_list_is_complete
 # fails if a tool that builds a path under data/ is missing here.
@@ -92,6 +104,19 @@ def pin_problem(pin: str) -> str | None:
     if not VERSION_TOKEN.search(pin):
         return "has no tag, commit, year or 'Rev.'"
     return None
+
+
+def toolchain_versions(text: str) -> list[tuple[str, str]]:
+    """Each `<tool>-version:` input in a workflow (python-version, java-version,
+    node-version, ...) with its value, quotes and trailing comment removed."""
+    found = re.findall(r"^\s*(?:- )?([\w-]+-version):[ \t]*(.*?)[ \t]*(?:#.*)?$", text, re.M)
+    return [(key, value.strip("\"'")) for key, value in found]
+
+
+def is_exact_version(value: str) -> bool:
+    """True for a full major.minor.patch version, such as 3.12.16, and not for a
+    bare major ("21"), a major.minor ("3.12"), a wildcard ("3.12.x") or an alias."""
+    return re.fullmatch(r"\d+\.\d+\.\d+", value) is not None
 
 
 def workflow_tools() -> set[str]:
@@ -182,6 +207,64 @@ class JavaVersionTest(unittest.TestCase):
                 with self.subTest(file=path.relative_to(ROOT).as_posix(), text=m.group(0)):
                     self.assertEqual(m.group(1), ci)
                     self.assertIsNone(m.group(2), "state the version CI runs, without \"+\", \"or later\" or \"only\"")
+
+
+class ToolchainPinTest(unittest.TestCase):
+    """P1-10: every setup-* action in the workflows runs an exact toolchain
+    version, not one that floats by major or minor."""
+
+    def test_every_toolchain_version_is_exact(self):
+        keys = set()
+        for path in WORKFLOWS:
+            for key, value in toolchain_versions(read(path)):
+                keys.add(key)
+                with self.subTest(file=path.relative_to(ROOT).as_posix(), key=key):
+                    self.assertTrue(is_exact_version(value), f"{key} is {value!r}; pin a full X.Y.Z version")
+        self.assertLessEqual({"python-version", "java-version", "node-version"}, keys)
+
+    def test_floating_versions_are_rejected(self):
+        for value in ("3.12", "21", "22", "3.12.x", "22.x", "lts/*", "latest", "3.12.16-dev", ""):
+            with self.subTest(value=value):
+                self.assertFalse(is_exact_version(value))
+
+    def test_parser_reads_quoted_unquoted_and_commented_values(self):
+        text = ('      - uses: actions/setup-python@abc # v7\n        with:\n'
+                '          python-version: "3.12"\n          java-version: 21 # LTS\n'
+                "          node-version: '22.23.5'\n")
+        self.assertEqual(toolchain_versions(text),
+                         [("python-version", "3.12"), ("java-version", "21"), ("node-version", "22.23.5")])
+
+
+class LockfileDeprecationTest(unittest.TestCase):
+    """P1-11: no package in brief/'s or overview/'s package-lock.json is marked
+    deprecated, apart from those listed in DEPRECATED_ALLOWED."""
+
+    def test_no_deprecated_packages(self):
+        for path in LOCKFILES:
+            name = path.relative_to(ROOT).as_posix()
+            packages = json.loads(read(path))["packages"]
+            deprecated = {key for key, entry in packages.items() if "deprecated" in entry}
+            allowed = DEPRECATED_ALLOWED.get(name, set())
+            with self.subTest(file=name):
+                self.assertEqual(sorted(deprecated - allowed), [], "deprecated in the lockfile")
+                self.assertEqual(sorted(allowed - set(packages)), [], "remove from DEPRECATED_ALLOWED")
+
+    def test_xmldom_is_not_deprecated(self):
+        packages = json.loads(read(ROOT / "brief" / "package-lock.json"))["packages"]
+        entry = packages["node_modules/@xmldom/xmldom"]
+        self.assertNotIn("deprecated", entry)
+
+
+class GitattributesTest(unittest.TestCase):
+    """A-33: LF is the default line ending, set by the first rule of
+    .gitattributes so the later -text and binary rules still override it."""
+
+    def test_first_rule_sets_lf(self):
+        rules = [line.strip() for line in read(ROOT / ".gitattributes").splitlines()
+                 if line.strip() and not line.lstrip().startswith("#")]
+        self.assertTrue(rules, ".gitattributes has no rules")
+        self.assertEqual(rules[0], "* text=auto eol=lf")
+        self.assertIn("*.pdf binary", rules)
 
 
 class StillOpenTest(unittest.TestCase):
