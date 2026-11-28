@@ -55,22 +55,25 @@ def still_open_items(text: str) -> list[str]:
 
 
 def workflow_tools() -> set[str]:
-    """The tools/ scripts validate.yml runs: each `python tools/<x>.py` and each
-    `tools/....sh` given as a step's command (not, say, inside hashFiles)."""
+    """The scripts validate.yml runs: each `python tools/<x>.py` and each
+    `<dir>/....sh` in a step's command, such as `tools/sysml/validate.sh` and
+    `brief/build.sh` (not a quoted path, as inside hashFiles)."""
     workflow = read(WORKFLOW)
     tools = set(re.findall(r"\bpython3? (tools/[\w./-]+\.py)\b", workflow))
-    tools |= set(re.findall(r"^\s*(?:- )?(?:run: )?(tools/[\w./-]+\.sh)\b", workflow, re.M))
+    tools |= set(re.findall(r"(?<![\w/'\"])([\w-]+/[\w./-]+\.sh)\b", workflow))
     return tools
 
 
 class VerificationEvidenceTest(unittest.TestCase):
-    """P1-02: each tool validate.yml runs is named in README's Verification
-    evidence, and each tool named there is run by validate.yml."""
+    """P1-02: each script validate.yml runs is named in README's Verification
+    evidence, and each script named there is run by validate.yml."""
 
     def test_every_workflow_tool_is_named(self):
         tools = workflow_tools()
         self.assertIn("tools/sysml/validate.sh", tools)
         self.assertIn("tools/render_views.py", tools)
+        self.assertIn("brief/build.sh", tools)
+        self.assertIn("overview/build.sh", tools)
         section = readme_section(read(ROOT / "README.md"), "Verification evidence")
         missing = sorted(t for t in tools if t not in section)
         self.assertEqual(missing, [], "run by validate.yml but not named in README's Verification evidence")
@@ -78,7 +81,7 @@ class VerificationEvidenceTest(unittest.TestCase):
     def test_every_named_tool_is_run_by_the_workflow(self):
         tools = workflow_tools()
         section = readme_section(read(ROOT / "README.md"), "Verification evidence")
-        named = set(re.findall(r"(?<![\w/])(tools/[\w./-]+\.(?:py|sh))\b", section))
+        named = set(re.findall(r"(?<![\w/])(tools/[\w./-]+\.py|[\w-]+/[\w./-]+\.sh)\b", section))
         self.assertIn("tools/validate_trace.py", named)
         stale = sorted(t for t in named if t not in tools)
         self.assertEqual(stale, [], "named in README's Verification evidence but not run by validate.yml")
@@ -122,7 +125,9 @@ class StillOpenTest(unittest.TestCase):
     def test_no_still_open_item_says_closed_by(self):
         items = still_open_items(read(ROOT / "README.md"))
         self.assertTrue(items, "the 'Still open' list is empty or not found")
-        self.assertEqual([i for i in items if "Closed by" in i], [])
+        # "To be closed by" is the wording for an item that is still open.
+        says_closed = re.compile(r"(?<!to be )\bclosed by", re.I)
+        self.assertEqual([i for i in items if says_closed.search(i)], [])
 
 
 if __name__ == "__main__":

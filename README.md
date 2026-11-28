@@ -99,6 +99,8 @@ The other checks in the same workflow:
 - [`tools/gen_sysml.py`](tools/gen_sysml.py) `--check` fails if the generated SysML model has drifted from the CSVs;
 - [`tools/sysml/validate.sh`](tools/sysml/validate.sh) fails if the SysML v2 model fails validation on the OMG Pilot Implementation;
 - [`tools/check_p2_snapshot.py`](tools/check_p2_snapshot.py) fails if `overview/p2-snapshot/` differs from P2 at its pinned commit;
+- [`brief/build.sh`](brief/build.sh) fails if the brief doesn't build, and the `git diff --exit-code -- 'brief/assets/*.mmd'` step after it fails if the diagram sources it regenerates differ from the committed ones, that is, have drifted from [`docs/04-architecture.md`](docs/04-architecture.md) and this README;
+- [`overview/build.sh`](overview/build.sh) fails if the project overview doesn't build;
 - `python -m unittest discover -s tests` runs the unit tests of the tools and of these docs ([`tests/`](tests/)), and fails if any test fails.
 
 The column rules are in [`data/README.md`](data/README.md).
