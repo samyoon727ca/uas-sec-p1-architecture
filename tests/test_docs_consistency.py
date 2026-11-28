@@ -54,25 +54,42 @@ def still_open_items(text: str) -> list[str]:
     return items
 
 
+def workflow_tools() -> set[str]:
+    """The tools/ scripts validate.yml runs: each `python tools/<x>.py` and each
+    `tools/....sh` given as a step's command (not, say, inside hashFiles)."""
+    workflow = read(WORKFLOW)
+    tools = set(re.findall(r"\bpython3? (tools/[\w./-]+\.py)\b", workflow))
+    tools |= set(re.findall(r"^\s*(?:- )?(?:run: )?(tools/[\w./-]+\.sh)\b", workflow, re.M))
+    return tools
+
+
 class VerificationEvidenceTest(unittest.TestCase):
-    """P1-02: each tool validate.yml runs is named in README's Verification evidence."""
+    """P1-02: each tool validate.yml runs is named in README's Verification
+    evidence, and each tool named there is run by validate.yml."""
 
     def test_every_workflow_tool_is_named(self):
-        workflow = read(WORKFLOW)
-        tools = set(re.findall(r"\bpython3? (tools/[\w./-]+\.py)\b", workflow))
-        tools |= set(re.findall(r"(?<![\w/])(tools/[\w./-]+\.sh)\b", workflow))
+        tools = workflow_tools()
         self.assertIn("tools/sysml/validate.sh", tools)
         self.assertIn("tools/render_views.py", tools)
         section = readme_section(read(ROOT / "README.md"), "Verification evidence")
         missing = sorted(t for t in tools if t not in section)
         self.assertEqual(missing, [], "run by validate.yml but not named in README's Verification evidence")
 
+    def test_every_named_tool_is_run_by_the_workflow(self):
+        tools = workflow_tools()
+        section = readme_section(read(ROOT / "README.md"), "Verification evidence")
+        named = set(re.findall(r"(?<![\w/])(tools/[\w./-]+\.(?:py|sh))\b", section))
+        self.assertIn("tools/validate_trace.py", named)
+        stale = sorted(t for t in named if t not in tools)
+        self.assertEqual(stale, [], "named in README's Verification evidence but not run by validate.yml")
+
 
 class DataReadmeTest(unittest.TestCase):
     """P1-13: every tool that reads data/ is named in data/README.md."""
 
     def test_data_readers_list_is_complete(self):
-        builds_data_path = re.compile(r'/ "data"')
+        # A path joined onto "data", or a string literal "data" or "data/...".
+        builds_data_path = re.compile(r'/ "data"|["\']data(?:/|["\'])')
         readers = sorted(p.name for p in (ROOT / "tools").glob("*.py") if builds_data_path.search(read(p)))
         self.assertTrue(readers)
         self.assertEqual(sorted(set(readers) - set(DATA_READERS)), [], "add these to DATA_READERS")
