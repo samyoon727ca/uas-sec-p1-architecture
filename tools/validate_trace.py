@@ -557,8 +557,9 @@ def _split_md_row(line: str) -> list[str]:
 
 
 def parse_markdown_table(text: str, rel: str, heading: str,
-                         report: Report) -> tuple[list[str], list[tuple[int, list[str]]]] | None:
-    """Find and parse the Markdown table immediately following heading."""
+                         report: Report) -> tuple[int, list[str], list[tuple[int, list[str]]]] | None:
+    """Find and parse the Markdown table immediately following heading.
+    Returns (header line number, header cells, [(line number, cells), ...])."""
     lines = text.splitlines()
     matches = [i for i, line in enumerate(lines) if line.strip() == heading]
     if not matches:
@@ -621,7 +622,17 @@ def parse_markdown_table(text: str, rel: str, heading: str,
     if not rows:
         report.error(f"{rel}:{header_lineno}", f"priority-threat table after '{heading}' has no data rows")
         return None
-    return header, rows
+    return header_lineno, header, rows
+
+
+def _strip_parentheticals(text: str) -> str:
+    """Remove parenthesised text, innermost first, so nested groups such as
+    '(VE-01 (see P2))' go entirely. Unbalanced parentheses are left in place."""
+    while True:
+        stripped = re.sub(r"\([^()]*\)", "", text)
+        if stripped == text:
+            return text
+        text = stripped
 
 
 def check_priority_threats(root: Path, threats: dict, reqs: dict,
@@ -643,15 +654,16 @@ def check_priority_threats(root: Path, threats: dict, reqs: dict,
         parsed = parse_markdown_table(path.read_text(encoding="utf-8"), rel, heading, report)
         if parsed is None:
             continue
-        header, rows = parsed
+        header_lineno, header, rows = parsed
+        header_where = f"{rel}:{header_lineno}"
         if "Mitigated by" not in header:
-            report.error(rel, "priority-threat table missing required column 'Mitigated by'")
+            report.error(header_where, "priority-threat table missing required column 'Mitigated by'")
             continue
         mitigated_col = header.index("Mitigated by")
         evidence_col = None
         if check_evidence:
             if "Evidence" not in header:
-                report.error(rel, "priority-threat table missing required column 'Evidence'")
+                report.error(header_where, "priority-threat table missing required column 'Evidence'")
                 continue
             evidence_col = header.index("Evidence")
 
@@ -680,7 +692,7 @@ def check_priority_threats(root: Path, threats: dict, reqs: dict,
                                     f"{', '.join(sorted(extra))} do not trace to {thr_label} in trace.csv")
 
             if evidence_col is not None:
-                ev_plain = re.sub(r"\([^)]*\)", "", cells[evidence_col])
+                ev_plain = _strip_parentheticals(cells[evidence_col])
                 tokens = [tok.strip() for tok in ev_plain.split(",")] if ev_plain.strip() else []
                 listed_repos: set[str] = set()
                 bad_repo = False

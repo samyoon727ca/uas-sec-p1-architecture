@@ -634,6 +634,26 @@ class PriorityThreatTablesTest(unittest.TestCase):
         report = self.run_on_copy(edit)
         self.assertEqual(report.errors, [])
 
+    def test_nested_parentheticals_in_evidence_cell_are_ignored(self):
+        def edit(rel, text):
+            if rel == "docs/05-threat-model.md":
+                return text.replace("| P3 (VE-01) |", "| P3 (VE-01 (see P2)) |")
+            return text
+        report = self.run_on_copy(edit)
+        self.assertEqual(report.errors, [])
+
+    def test_unbalanced_parenthesis_in_evidence_cell_fails(self):
+        def edit(rel, text):
+            if rel == "docs/05-threat-model.md":
+                return text.replace("| P3 (VE-01) |", "| P3 (VE-01)) |")
+            return text
+        report = self.run_on_copy(edit)
+        self.assertTrue(
+            any(e.startswith("docs/05-threat-model.md:") and "malformed evidence repo 'P3 )'" in e
+                for e in report.errors),
+            report.errors,
+        )
+
     def test_structural_errors_fail(self):
         threats = {"THR-001": {"_where": "threats.csv:2"}}
         reqs = {"SR-001": {"evidence_repo": "P3"}}
@@ -653,12 +673,32 @@ class PriorityThreatTablesTest(unittest.TestCase):
         self.assertTrue(any("file not found" in e for e in run_doc(None).errors))
         self.assertTrue(any("heading '## Priority' not found" in e for e in run_doc("# Other\n").errors))
         self.assertTrue(any("no markdown table found" in e for e in run_doc("## Priority\n\n## Next\n").errors))
-        self.assertTrue(any("missing required column 'Mitigated by'" in e for e in run_doc(
+        self.assertIn("doc.md:3: priority-threat table missing required column 'Mitigated by'", run_doc(
             "## Priority\n\n| Threat | Evidence |\n|---|---|\n| THR-001 | P3 |\n"
-        ).errors))
-        self.assertTrue(any("missing required column 'Evidence'" in e for e in run_doc(
+        ).errors)
+        self.assertIn("doc.md:3: priority-threat table missing required column 'Evidence'", run_doc(
             "## Priority\n\n| Threat | Mitigated by |\n|---|---|\n| THR-001 | SR-001 |\n",
             check_evidence=True,
+        ).errors)
+        self.assertTrue(any("heading '## Priority' appears more than once" in e for e in run_doc(
+            "## Priority\n\n| Threat | Mitigated by |\n|---|---|\n| THR-001 | SR-001 |\n\n"
+            "## Priority\n\n| Threat | Mitigated by |\n|---|---|\n| THR-001 | SR-001 |\n",
+            check_evidence=False,
+        ).errors))
+        self.assertTrue(any(e.startswith("doc.md:4:") and "malformed markdown table separator row" in e
+                            for e in run_doc(
+            "## Priority\n\n| Threat | Mitigated by |\n| not a separator | --- |\n| THR-001 | SR-001 |\n",
+            check_evidence=False,
+        ).errors))
+        self.assertTrue(any(e.startswith("doc.md:4:") and "malformed markdown table separator row" in e
+                            for e in run_doc(
+            "## Priority\n\n| Threat | Mitigated by |\n|---|\n| THR-001 | SR-001 |\n",
+            check_evidence=False,
+        ).errors))
+        self.assertTrue(any(e.startswith("doc.md:5:") and "table row has 3 cells, expected 2" in e
+                            for e in run_doc(
+            "## Priority\n\n| Threat | Mitigated by |\n|---|---|\n| THR-001 | SR-001 | extra |\n",
+            check_evidence=False,
         ).errors))
         self.assertTrue(any("has no data rows" in e for e in run_doc(
             "## Priority\n\n| Threat | Mitigated by | Evidence |\n|---|---|---|\n"
