@@ -1,13 +1,18 @@
 """Unit tests for tools/validate_trace.py. Run: python -m unittest discover -s tests"""
 from __future__ import annotations
 
+import contextlib
 import csv
+import io
+import re
+import shutil
 import sys
 import tempfile
 import unittest
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "tools"))
 import validate_trace as vt  # noqa: E402
 
 
@@ -419,6 +424,115 @@ class ValidatorTest(unittest.TestCase):
         data["elements.csv"].append(element("TB-02", "trust_boundary"))
         report = self.run_validator(data)
         self.assertEqual(report.errors, [])
+
+
+class CountClaimsTest(unittest.TestCase):
+    """README.md and brief/pdr-brief.md counts are checked against data/."""
+
+    def run_on_copy(self, edit=None):
+        """Validate the repo's data against copies of README.md and the brief,
+        after edit(rel, text) -> text is applied to each copy."""
+        with tempfile.TemporaryDirectory() as tmp:
+            for rel in ("README.md", "brief/pdr-brief.md"):
+                dest = Path(tmp) / rel
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                text = (ROOT / rel).read_text(encoding="utf-8")
+                dest.write_text(edit(rel, text) if edit else text, encoding="utf-8")
+            return vt.validate(ROOT / "data", root=Path(tmp))
+
+    def test_repo_counts_match_data(self):
+        report = vt.validate(ROOT / "data", root=ROOT)
+        self.assertEqual(report.errors, [])
+
+    def test_mutated_readme_count_fails(self):
+        def edit(rel, text):
+            return text.replace("42 MI-1, ", "41 MI-1, ") if rel == "README.md" else text
+        report = self.run_on_copy(edit)
+        self.assertTrue(any(e.startswith("README.md:") and "states 41 MI-1 threats, but data/ has 42" in e
+                            for e in report.errors), report.errors)
+
+    def test_mutated_brief_count_fails(self):
+        def edit(rel, text):
+            return text.replace("| P5 | Hardware and debug-port assessment | 2 |",
+                                "| P5 | Hardware and debug-port assessment | 3 |") if rel != "README.md" else text
+        report = self.run_on_copy(edit)
+        self.assertTrue(any(e.startswith("brief/pdr-brief.md:") and
+                            "states 3 requirements with evidence repo P5, but data/ has 2" in e
+                            for e in report.errors), report.errors)
+
+    def test_every_checked_number_fails_when_edited(self):
+        for rel, pattern, fact in vt.COUNT_CLAIMS:
+            text = (ROOT / rel).read_text(encoding="utf-8")
+            for m in re.finditer(pattern, text, re.MULTILINE):
+                bumped = str(int(m.group(1)) + 1)
+                edited = text[:m.start(1)] + bumped + text[m.end(1):]
+                with self.subTest(rel=rel, pattern=pattern, at=m.start(1)):
+                    report = self.run_on_copy(lambda r, t: edited if r == rel else t)
+                    self.assertTrue(any(e.startswith(f"{rel}:") and f"states {bumped} {fact}," in e
+                                        for e in report.errors), report.errors)
+
+    def test_element_count_is_checked(self):
+        def edit(rel, text):
+            return text.replace("(46 data-flow-diagram elements", "(40 data-flow-diagram elements")
+        report = self.run_on_copy(edit)
+        self.assertTrue(any("states 40 elements, but data/ has 46" in e for e in report.errors), report.errors)
+
+    def test_reworded_sentence_fails(self):
+        def edit(rel, text):
+            return text.replace("verification events are planned", "verification events are scheduled")
+        report = self.run_on_copy(edit)
+        self.assertTrue(any("verification events are planned" in e and "matches nothing" in e
+                            for e in report.errors), report.errors)
+
+    def test_pattern_matching_nothing_fails(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / "README.md").write_text("There are 66 threats.\n", encoding="utf-8")
+            report = vt.Report()
+            vt.check_counts(Path(tmp), {"threats": 66}, report,
+                            claims=[("README.md", r"There are (\d+) threats", "threats"),
+                                    ("README.md", r"(\d+) requirements", "threats")])
+        self.assertEqual(len(report.errors), 1, report.errors)
+        self.assertIn("matches nothing", report.errors[0])
+
+    def test_missing_file_fails(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            report = vt.Report()
+            vt.check_counts(Path(tmp), {"threats": 66}, report,
+                            claims=[("README.md", r"(\d+) threats", "threats")])
+        self.assertTrue(any("file not found" in e for e in report.errors), report.errors)
+
+    def test_cli_checks_counts_in_the_data_dirs_parent(self):
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(vt.main([]), 0)
+        with tempfile.TemporaryDirectory() as tmp:
+            shutil.copytree(ROOT / "data", Path(tmp) / "data")
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                self.assertEqual(vt.main(["--data-dir", str(Path(tmp) / "data")]), 1)
+        self.assertIn("README.md: file not found", out.getvalue())
+
+    def test_cli_root_option_points_the_count_check_elsewhere(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            shutil.copytree(ROOT / "data", Path(tmp) / "data")
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(vt.main(["--data-dir", str(Path(tmp) / "data"), "--root", str(ROOT)]), 0)
+            (Path(tmp) / "README.md").write_text(
+                (ROOT / "README.md").read_text(encoding="utf-8").replace("42 MI-1, ", "41 MI-1, "),
+                encoding="utf-8")
+            (Path(tmp) / "brief").mkdir()
+            shutil.copy(ROOT / "brief" / "pdr-brief.md", Path(tmp) / "brief" / "pdr-brief.md")
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                self.assertEqual(vt.main(["--data-dir", str(ROOT / "data"), "--root", tmp]), 1)
+        self.assertIn("states 41 MI-1 threats, but data/ has 42", out.getvalue())
+
+    def test_cli_skip_counts(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            shutil.copytree(ROOT / "data", Path(tmp) / "data")
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                self.assertEqual(vt.main(["--data-dir", str(Path(tmp) / "data"), "--skip-counts"]), 0)
+        self.assertNotIn("file not found", out.getvalue())
 
 
 if __name__ == "__main__":

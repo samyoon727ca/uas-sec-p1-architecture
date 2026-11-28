@@ -102,6 +102,10 @@ Every event in `verification.csv` appears in exactly one row, the row whose `p_i
 
 Each series repo reports its status in a `series-status.json` file that may claim only the VEs listed in its row here. The format is in [`docs/series-status.md`](../docs/series-status.md), and `tools/check_series_status.py` checks it.
 
+## Counts in the README and brief
+
+`README.md` and `brief/pdr-brief.md` state counts taken from these files: elements (all, STRIDE and trust boundaries), threats (total, by mission impact, mitigated and accepted, with an EMB3D or ATT&CK for ICS ID), requirements (total, by `allocated_to`, by `verification` and by `evidence_repo`), SP 800-160 techniques and approaches (used by requirements, and in the catalog), and verification events (total and `planned`). The validator computes each count and checks it at every place the two files state it. Those places are listed in `COUNT_CLAIMS` in `tools/validate_trace.py`, one `(file, regex, fact)` entry each. A pattern that matches nothing is an error, so a reworded sentence fails instead of going unchecked: update its pattern in the same pull request. The validator reads the two files under `--root`, which defaults to the parent of `--data-dir`; pass `--skip-counts` to validate a data folder that has no README or brief beside it.
+
 ## Running locally
 
 ```sh

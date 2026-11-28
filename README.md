@@ -25,7 +25,7 @@ All P1 deliverables are in place and checked in CI: architecture, threat model, 
 
 ## Threat
 
-66 threats, analyzed STRIDE per element across all 40 data-flow-diagram elements and mapped to MITRE EMB3D v2.0.2 and ATT&CK for ICS v19.2. Mission-impact ratings: 42 MI-1, 16 MI-2, 6 MI-3, 2 MI-4. 63 are mitigated and 3 accepted with rationale.
+66 threats, analyzed STRIDE per element across all 40 STRIDE elements (46 data-flow-diagram elements, less 6 trust boundaries) and mapped to MITRE EMB3D v2.0.2 and ATT&CK for ICS v19.2. Mission-impact ratings: 42 MI-1, 16 MI-2, 6 MI-3, 2 MI-4. 63 are mitigated and 3 accepted with rationale.
 
 **Headline finding.** PX4 MAVLink signing uses one shared key. The FC, companion computer (CC), GCS and maintenance station (MSS) all hold it, so most MI-1 threats end the same way: an adversary holds that key, or runs code on a node that does.
 
@@ -87,6 +87,7 @@ Traceability is checked automatically on every push. [`tools/validate_trace.py`]
 - an EMB3D or ATT&CK for ICS ID, or an SP 800-160 resiliency approach, is not in its pinned catalog (revoked IDs included);
 - a requirement is not covered by a verification event with the same method and evidence repo;
 - a verification event is marked passed or failed without a link to its evidence, pinned to a commit;
+- a count that this README or the brief states (threats, elements, mission-impact ratings, dispositions, requirements by component, method and repo, resiliency techniques and approaches, verification events) differs from the CSVs, or a sentence that states one no longer matches its pattern;
 - a generated doc view or the generated SysML model has drifted from the CSVs;
 - the SysML v2 model fails validation on the OMG Pilot Implementation.
 
