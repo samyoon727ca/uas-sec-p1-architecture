@@ -15,4 +15,11 @@ Audit items that P1 closed after the audit of 2026-10-13. Each entry quotes the 
 - **Check.** A rule in [`tools/validate_trace.py`](../../tools/validate_trace.py), run by the `traceability` job of `validate.yml`, computes the counts from `data/` and compares them with every place `README.md` and `brief/pdr-brief.md` state them, listed in `COUNT_CLAIMS`. A changed count or a reworded sentence that a pattern no longer matches fails the build. Tests are in `tests/test_validate_trace.py` (`CountClaimsTest`).
 - **Change.** The pull request that closes issue #43 (samyoon727ca/uas-sec-p1-architecture#43).
 
+## 2026-11-27: P1-07 (cited by audit finding A-31)
+
+- **Original finding.** A-31, observation: "P1-07: docs/05-threat-model.md:108 THR-016/019 row omits SR-036 and P3."
+- **What changed.** In the priority-threat table of [`docs/05-threat-model.md`](../../docs/05-threat-model.md) (§5.3, line 108), the `THR-016, THR-019` row now lists `SR-036 (rotate after loss of custody)` alongside `SR-026` to `SR-029`, and its Evidence cell now lists `P3, P4, P6`. Every other row of §5.3 and the `README.md` priority-threat table already matched `data/trace.csv` and `data/requirements.csv`. No data CSV under `data/` changed.
+- **Check.** A rule in [`tools/validate_trace.py`](../../tools/validate_trace.py) (`PRIORITY_THREAT_TABLES`), run by the `traceability` job of `validate.yml`, parses both priority-threat tables and verifies that every row's listed requirements equal the set `data/trace.csv` links to that row's threats, and (for `docs/05-threat-model.md`) that the plain repo IDs in Evidence equal those requirements' `evidence_repo` values in `data/requirements.csv`. Tests are in `tests/test_validate_trace.py` (`PriorityThreatTablesTest`).
+- **Change.** The pull request that closes issue #44 (samyoon727ca/uas-sec-p1-architecture#44).
+
 The open status of every other P1 audit item is tracked in [`triage.md`](triage.md).

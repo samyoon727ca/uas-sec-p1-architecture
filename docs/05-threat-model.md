@@ -105,7 +105,7 @@ These are ranked by mission impact and by how reachable the path is for the A-08
 | **THR-026, THR-027** Signing key read, replaced or deleted on the FC's SD card | MI-1 | SR-023 (seals, pre-flight inspection), SR-036 (rotate after loss of custody), SR-025 (GCS alarm on signing state) | P5, P3 | Seals detect access; they don't prevent it |
 | **THR-057** Unauthorized peer installs the first signing key | MI-2 | SR-037 (first key over USB at first power-up), SR-011 (CC drops `SETUP_SIGNING` from the tunnel), SR-025 | P3, P4 | A window remains if procedure SR-037 is skipped |
 | **THR-021, THR-063** Malicious code enters signed artifacts through the build or upstream | MI-1 | SR-031 (hash-pinned deps), SR-032 (SBOM and scan), SR-033 (provenance) | P4 | Malicious changes that pass review upstream |
-| **THR-016, THR-019** GCS stolen, or compromised through unrelated use | MI-1 | SR-026, SR-027, SR-028, SR-029 | P4, P6 | A key holder lives on a laptop |
+| **THR-016, THR-019** GCS stolen, or compromised through unrelated use | MI-1 | SR-026, SR-027, SR-028, SR-029, SR-036 (rotate after loss of custody) | P3, P4, P6 | A key holder lives on a laptop |
 | **THR-002** Commands reach the FC outside the C2 path (uXRCE-DDS, spare MAVLink instance) | MI-1 | SR-022 | P6 | None identified while the configuration holds |
 | **THR-024** GNSS spoofing diverts the vehicle | MI-1 | SR-020 (spoofing and jamming checks on) | P6 | Spoofing the receiver does not report |
 
