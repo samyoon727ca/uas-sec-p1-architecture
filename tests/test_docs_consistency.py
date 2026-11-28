@@ -1,7 +1,8 @@
 """Unit tests that the hand-written docs agree with the workflow and the tools.
 
 Each test keeps one audit item closed (overview/audit/closures.md): P1-02
-(README names the tool behind each check), P1-13 (data/README.md names every
+(README names the tool behind each check), P1-12 (every source in
+docs/references.md has a pinned version), P1-13 (data/README.md names every
 tool that reads data/), P1-14 (the Java version matches CI) and P1-15 (no
 "Still open" item says it is closed).
 """
@@ -54,6 +55,45 @@ def still_open_items(text: str) -> list[str]:
     return items
 
 
+def sources_pins(text: str) -> dict[str, str]:
+    """The 'Version pinned' cell of each row of the '## Sources' table, by tag."""
+    match = re.search(r"^## Sources\n(.*?)(?=^## |\Z)", text, re.M | re.S)
+    if match is None:
+        raise AssertionError("docs/references.md has no '## Sources' section")
+    section = match.group(1)
+    rows = [line for line in section.splitlines() if line.startswith("|")]
+    if len(rows) < 3:
+        raise AssertionError("docs/references.md has no Sources table")
+    header = [cell.strip() for cell in rows[0].strip("|").split("|")]
+    column = header.index("Version pinned")
+    pins = {}
+    for row in rows[2:]:
+        cells = [cell.strip() for cell in row.strip("|").split("|")]
+        if len(cells) != len(header):
+            raise AssertionError(f"Sources row has {len(cells)} cells, expected {len(header)}: {row}")
+        pins[cells[0]] = cells[column]
+    return pins
+
+
+# A token a reader can retrieve a source at: a tag such as v1.2.3, a commit of
+# 7 or more hex digits, a year, or a document revision ("Rev.").
+VERSION_TOKEN = re.compile(r"\bv\d+(?:\.\d+)+\b|\b(?=[0-9a-f]*\d)[0-9a-f]{7,40}\b|\b(?:19|20)\d{2}\b|\bRev\.")
+# Words that name a moving target rather than a version.
+FLOATING_WORDS = {"current", "stable", "same", "master", "main", "latest", "beta", "list", "docs", "at", "access", "time", "of"}
+
+
+def pin_problem(pin: str) -> str | None:
+    """Why a 'Version pinned' cell does not pin a version, or None if it does."""
+    words = re.findall(r"[a-z]+", pin.lower())
+    if not words or set(words) <= FLOATING_WORDS:
+        return "names no version, only a moving target"
+    if words[0] == "same":
+        return "refers to another row; state the pin explicitly"
+    if not VERSION_TOKEN.search(pin):
+        return "has no tag, commit, year or 'Rev.'"
+    return None
+
+
 def workflow_tools() -> set[str]:
     """The scripts validate.yml runs: each `python tools/<x>.py` and each
     `<dir>/....sh` in a step's command, such as `tools/sysml/validate.sh` and
@@ -85,6 +125,31 @@ class VerificationEvidenceTest(unittest.TestCase):
         self.assertIn("tools/validate_trace.py", named)
         stale = sorted(t for t in named if t not in tools)
         self.assertEqual(stale, [], "named in README's Verification evidence but not run by validate.yml")
+
+
+class ReferencesPinTest(unittest.TestCase):
+    """P1-12: every row of the Sources table in docs/references.md pins a
+    version a reader can retrieve."""
+
+    def test_every_source_has_a_pin(self):
+        pins = sources_pins(read(ROOT / "docs" / "references.md"))
+        self.assertIn("[PX4-HARD]", pins)
+        self.assertIn("[CMVP-140C]", pins)
+        for tag, pin in pins.items():
+            with self.subTest(source=tag):
+                self.assertIsNone(pin_problem(pin), f"'Version pinned' is {pin!r}")
+
+    def test_floating_pins_are_rejected(self):
+        for pin in ("Current", "Stable", "Same", "`master` at access", "Current list", "Beta at time of access",
+                    "`main` docs", "Same as PX4-SIGN, commit `b12d17f6`", "Latest release"):
+            with self.subTest(pin=pin):
+                self.assertIsNotNone(pin_problem(pin))
+
+    def test_retrievable_pins_are_accepted(self):
+        for pin in ("`v5.1.5`", "Commit `2362c620`", "Posted 2026-05-18", "Rev. 1, December 2021",
+                    "Accessed 2026-10-02"):
+            with self.subTest(pin=pin):
+                self.assertIsNone(pin_problem(pin))
 
 
 class DataReadmeTest(unittest.TestCase):

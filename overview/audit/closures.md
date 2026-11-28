@@ -50,4 +50,18 @@ Audit items that P1 closed after the audit of 2026-10-13. Each entry quotes the 
 - **Check.** `tests/test_docs_consistency.py` (`StillOpenTest`) fails if any bullet of the README's "Still open" list contains "closed by" in any letter case (so "Closed by" and "closed by" both fail) other than as "to be closed by", or if the list is not found.
 - **Change.** The pull request that closes issue #45 (samyoon727ca/uas-sec-p1-architecture#45).
 
+## 2026-11-28: P1-12 (cited by audit finding A-31)
+
+- **Original finding.** A-31, observation: "P1-12: docs/references.md:32-42 rows without versions."
+- **What changed.** Every row of the Sources table in [`docs/references.md`](../../docs/references.md) now pins a version a reader can retrieve, taken as it stood on the access date, 2026-10-02. Each pin was looked up with `git ls-remote` and a treeless clone of the source repository, or from the Wayback Machine when the source has no repository:
+  - PX4-SIGN, PX4-HARD (which said "Same"), PX4-1.18 ("Beta at time of access") and PX4-1.17 ("Stable"): PX4-Autopilot `main` at commit `b12d17f6`, the head of `main` at the end of 2026-10-02, where the docs live under `docs/en/`. Only the v1.18 release notes changed on `main` that day, in the serial-passthrough item, which P1 does not cite. PX4-SIGN said its `main` doc "matches the doc at tag `v1.18.0-rc1`". It does not: the `main` doc adds text on the shared key and on forwarding. The cell now says that the key storage, provisioning, allowlist and armed-guard text P1 uses is also in `v1.18.0-rc1`. The PX4-HARD cell notes that the audit-status line P1 quotes is not in `v1.18.0-rc1`.
+  - MAV-SIGN ("Current"): mavlink-devguide commit `7412790c`, the head of `master` on 2026-10-02.
+  - MAVROUTER ("`master` at access"): mavlink-router commit `2362c620`, the head of `master` on 2026-10-02. "Version pinned in P4" is kept.
+  - WG ("Current"): the page has no version or repository, so the pin is the access date with the Wayback Machine snapshot `20260926112636`, whose text is the same as the page on 2026-11-28.
+  - CMVP-140C ("Current list"): the page as updated 2026-08-21, whose latest change-log entry is 2026-06-22, with the Wayback Machine snapshot `20261001210954`. That snapshot, like the page on 2026-11-28, lists AES-GCM and SHA-2/SHA-3 and no ChaCha20, Poly1305 or BLAKE2.
+
+  No "Used for" cell changed: the pinned version of each source agrees with it, so no conflict was added to [`owner-decisions.md`](owner-decisions.md). Which sources are cited, and their links, are unchanged.
+- **Check.** `tests/test_docs_consistency.py` (`ReferencesPinTest`) parses the Sources table and fails if any "Version pinned" cell has no version-like token (a tag such as `v1.2.3`, a commit of 7 or more hex digits, a year, or "Rev."), consists only of words such as Current, Stable, Same, `master` or `main`, or starts with "Same". It is run by the `traceability` job of `validate.yml`.
+- **Change.** The pull request that closes issue #46 (samyoon727ca/uas-sec-p1-architecture#46).
+
 The open status of every other P1 audit item is tracked in [`triage.md`](triage.md).
