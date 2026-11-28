@@ -5,16 +5,16 @@ Checks schema, ID format and uniqueness, referential integrity, threat
 dispositions, requirement quality, STRIDE-per-element applicability and
 coverage, verification coverage, the series manifest, that EMB3D, ATT&CK
 for ICS and NIST SP 800-160 Vol. 2 entries exist in the pinned catalogs
-under data/catalogs/, and that the counts README.md and brief/pdr-brief.md
-state match data/. Exits 1 if any error is found. Standard library only.
+under data/catalogs/, and that the counts and priority-threat tables in
+README.md, brief/pdr-brief.md and docs/05-threat-model.md match data/.
+Exits 1 if any error is found. Standard library only.
 
 Usage:
     python tools/validate_trace.py [--data-dir data] [--root DIR]
                                    [--skip-counts] [--allow-unanalyzed]
 
-The count check reads README.md and brief/pdr-brief.md under --root, which
-defaults to the parent of --data-dir. Pass --root to point it elsewhere, or
---skip-counts to validate a data folder that has no README or brief beside it.
+The doc checks (counts and priority-threat tables) read under --root, which
+defaults to the parent of --data-dir; --skip-counts skips them.
 """
 from __future__ import annotations
 
@@ -538,9 +538,182 @@ def check_counts(root: Path, facts: dict[str, int], report: Report, claims=COUNT
                 report.error(f"{rel}:{line}", f"states {stated} {fact}, but data/ has {facts[fact]}")
 
 
+# Hand-written priority-threat summary tables checked against trace.csv and
+# (when check_evidence is True) requirements.csv:
+# (file relative to the repo root, heading/marker line above the table, check_evidence).
+PRIORITY_THREAT_TABLES = [
+    ("docs/05-threat-model.md", "## 5.3 Priority threats", True),
+    ("README.md", "**Priority threats:**", False),
+]
+
+MD_TABLE_SEP = re.compile(r"^:?-+:?$")
+THREAT_TOKEN = re.compile(r"\bTHR-\d+\b")
+REQ_TOKEN = re.compile(r"\bSR-\d+\b")
+
+
+def _split_md_row(line: str) -> list[str]:
+    """Split a pipe-delimited Markdown table row into stripped cells."""
+    return [c.strip() for c in re.split(r"(?<!\\)\|", line.strip()[1:-1])]
+
+
+def parse_markdown_table(text: str, rel: str, heading: str,
+                         report: Report) -> tuple[int, list[str], list[tuple[int, list[str]]]] | None:
+    """Find and parse the Markdown table immediately following heading.
+    Returns (header line number, header cells, [(line number, cells), ...])."""
+    lines = text.splitlines()
+    matches = [i for i, line in enumerate(lines) if line.strip() == heading]
+    if not matches:
+        report.error(rel, f"priority-threat table heading '{heading}' not found")
+        return None
+    if len(matches) > 1:
+        report.error(rel, f"priority-threat table heading '{heading}' appears more than once")
+        return None
+
+    idx = matches[0] + 1
+    while idx < len(lines):
+        stripped = lines[idx].strip()
+        if stripped.startswith("|"):
+            break
+        if re.match(r"^#{1,6}\s", stripped):
+            report.error(rel, f"no markdown table found after '{heading}'")
+            return None
+        idx += 1
+    if idx >= len(lines):
+        report.error(rel, f"no markdown table found after '{heading}'")
+        return None
+
+    header_line = lines[idx].strip()
+    header_lineno = idx + 1
+    if len(header_line) < 2 or not header_line.endswith("|"):
+        report.error(f"{rel}:{header_lineno}", "malformed markdown table header row")
+        return None
+    header = _split_md_row(header_line)
+
+    sep_idx = idx + 1
+    if sep_idx >= len(lines):
+        report.error(f"{rel}:{header_lineno}", "markdown table missing separator row")
+        return None
+    sep_line = lines[sep_idx].strip()
+    if len(sep_line) < 2 or not (sep_line.startswith("|") and sep_line.endswith("|")):
+        report.error(f"{rel}:{sep_idx + 1}", "markdown table missing separator row")
+        return None
+    sep_cells = _split_md_row(sep_line)
+    if len(sep_cells) != len(header) or not all(MD_TABLE_SEP.match(c) for c in sep_cells):
+        report.error(f"{rel}:{sep_idx + 1}", "malformed markdown table separator row")
+        return None
+
+    rows: list[tuple[int, list[str]]] = []
+    row_idx = sep_idx + 1
+    while row_idx < len(lines) and lines[row_idx].strip().startswith("|"):
+        raw = lines[row_idx].strip()
+        lineno = row_idx + 1
+        if len(raw) < 2 or not raw.endswith("|"):
+            report.error(f"{rel}:{lineno}", "malformed markdown table row")
+            row_idx += 1
+            continue
+        cells = _split_md_row(raw)
+        if len(cells) != len(header):
+            report.error(f"{rel}:{lineno}", f"table row has {len(cells)} cells, expected {len(header)}")
+            row_idx += 1
+            continue
+        rows.append((lineno, cells))
+        row_idx += 1
+
+    if not rows:
+        report.error(f"{rel}:{header_lineno}", f"priority-threat table after '{heading}' has no data rows")
+        return None
+    return header_lineno, header, rows
+
+
+def _strip_parentheticals(text: str) -> str:
+    """Remove parenthesised text, innermost first, so nested groups such as
+    '(VE-01 (see P2))' go entirely. Unbalanced parentheses are left in place."""
+    while True:
+        stripped = re.sub(r"\([^()]*\)", "", text)
+        if stripped == text:
+            return text
+        text = stripped
+
+
+def check_priority_threats(root: Path, threats: dict, reqs: dict,
+                           links: list[tuple[str, str]], report: Report,
+                           tables=PRIORITY_THREAT_TABLES) -> None:
+    """Each row of a priority-threat summary table must list exactly the SRs
+    that trace.csv links to the row's threats, and (when check_evidence is
+    True) the Evidence cell's plain repo IDs must match those SRs'
+    evidence_repo values in requirements.csv."""
+    traced_reqs: dict[str, set[str]] = {}
+    for tid, rid in links:
+        traced_reqs.setdefault(tid, set()).add(rid)
+
+    for rel, heading, check_evidence in tables:
+        path = root / rel
+        if not path.is_file():
+            report.error(rel, "file not found (priority threats check)")
+            continue
+        parsed = parse_markdown_table(path.read_text(encoding="utf-8"), rel, heading, report)
+        if parsed is None:
+            continue
+        header_lineno, header, rows = parsed
+        header_where = f"{rel}:{header_lineno}"
+        if "Mitigated by" not in header:
+            report.error(header_where, "priority-threat table missing required column 'Mitigated by'")
+            continue
+        mitigated_col = header.index("Mitigated by")
+        evidence_col = None
+        if check_evidence:
+            if "Evidence" not in header:
+                report.error(header_where, "priority-threat table missing required column 'Evidence'")
+                continue
+            evidence_col = header.index("Evidence")
+
+        for lineno, cells in rows:
+            where = f"{rel}:{lineno}"
+            row_threats = THREAT_TOKEN.findall(cells[0])
+            if not row_threats:
+                report.error(where, "priority-threat row has no threat ID in first cell")
+                continue
+            unknown = [t for t in row_threats if t not in threats]
+            for tid in unknown:
+                report.error(where, f"unknown threat '{tid}' in priority-threat table")
+            if unknown:
+                continue
+
+            thr_label = ", ".join(dict.fromkeys(row_threats))
+            listed_srs = set(REQ_TOKEN.findall(cells[mitigated_col]))
+            expected_srs = set().union(*(traced_reqs.get(t, set()) for t in row_threats))
+            missing = expected_srs - listed_srs
+            extra = listed_srs - expected_srs
+            if missing:
+                report.error(where, f"{thr_label}: missing traced requirement(s) "
+                                    f"{', '.join(sorted(missing))} from trace.csv")
+            if extra:
+                report.error(where, f"{thr_label}: listed requirement(s) "
+                                    f"{', '.join(sorted(extra))} do not trace to {thr_label} in trace.csv")
+
+            if evidence_col is not None:
+                ev_plain = _strip_parentheticals(cells[evidence_col])
+                tokens = [tok.strip() for tok in ev_plain.split(",")] if ev_plain.strip() else []
+                listed_repos: set[str] = set()
+                bad_repo = False
+                for tok in tokens:
+                    if not P_ID.match(tok):
+                        report.error(where, f"{thr_label}: malformed evidence repo '{tok}' in Evidence cell")
+                        bad_repo = True
+                    else:
+                        listed_repos.add(tok)
+                expected_repos = {reqs[sr]["evidence_repo"] for sr in expected_srs if sr in reqs}
+                if not bad_repo and listed_repos != expected_repos:
+                    got = ", ".join(sorted(listed_repos)) or "(none)"
+                    want = ", ".join(sorted(expected_repos)) or "(none)"
+                    report.error(where, f"{thr_label}: evidence repos '{got}' do not match "
+                                        f"requirements.csv '{want}'")
+
+
 def validate(data_dir: Path, allow_unanalyzed: bool = False, root: Path | None = None) -> Report:
-    """Validate data_dir. If root is given, also check the counts that
-    root/README.md and root/brief/pdr-brief.md state against the data."""
+    """Validate data_dir. If root is given, also check the counts and
+    priority-threat tables in README.md, brief/pdr-brief.md and
+    docs/05-threat-model.md against the data."""
     report = Report()
     loaded = {name: load(data_dir / name, report) for name in SCHEMAS}
     catalogs = load_catalogs(data_dir, report)
@@ -557,6 +730,7 @@ def validate(data_dir: Path, allow_unanalyzed: bool = False, root: Path | None =
     check_closure(elements, threats, reqs, links, report, allow_unanalyzed)
     if root is not None:
         check_counts(root, count_facts(elements, threats, reqs, events, catalogs), report)
+        check_priority_threats(root, threats, reqs, links, report)
 
     report.summary = (
         f"{len(elements)} elements, {len(threats)} threats "
@@ -575,12 +749,13 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "--root", type=Path, default=None,
-        help="folder holding README.md and brief/pdr-brief.md for the count check "
-             "(default: the parent of --data-dir)",
+        help="folder holding README.md, brief/pdr-brief.md and docs/05-threat-model.md "
+             "for the doc checks (default: the parent of --data-dir)",
     )
     parser.add_argument(
         "--skip-counts", action="store_true",
-        help="don't check the counts stated in README.md and brief/pdr-brief.md",
+        help="don't check the counts or priority-threat tables in README.md, "
+             "brief/pdr-brief.md and docs/05-threat-model.md",
     )
     parser.add_argument(
         "--allow-unanalyzed", action="store_true",

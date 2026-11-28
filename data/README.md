@@ -106,6 +106,10 @@ Each series repo reports its status in a `series-status.json` file that may clai
 
 `README.md` and `brief/pdr-brief.md` state counts taken from these files: elements (all, STRIDE and trust boundaries), threats (total, by mission impact, mitigated and accepted, with an EMB3D or ATT&CK for ICS ID), requirements (total, by `allocated_to`, by `verification` and by `evidence_repo`), SP 800-160 techniques and approaches (used by requirements, and in the catalog), and verification events (total and `planned`). The validator computes each count and checks it at every place the two files state it. Those places are listed in `COUNT_CLAIMS` in `tools/validate_trace.py`, one `(file, regex, fact)` entry each. A pattern that matches nothing is an error, so a reworded sentence fails instead of going unchecked: update its pattern in the same pull request. The validator reads the two files under `--root`, which defaults to the parent of `--data-dir`; pass `--skip-counts` to validate a data folder that has no README or brief beside it.
 
+## Priority-threat tables in `docs/05-threat-model.md` and the README
+
+The hand-written priority-threat tables in [`docs/05-threat-model.md`](../docs/05-threat-model.md) (§5.3) and [`README.md`](../README.md) are checked against `trace.csv` and `requirements.csv` (`PRIORITY_THREAT_TABLES` in `tools/validate_trace.py`). For each row, the set of `SR-###` IDs in "Mitigated by" must equal the requirements that `trace.csv` links to the row's `THR-###` IDs. In `docs/05-threat-model.md`, the set of plain `P#` repo IDs in "Evidence" (ignoring parentheticals such as `(VE-01)`) must equal the `evidence_repo` values of those requirements in `requirements.csv`. A missing heading, table or column is an error. Like the count check, this reads under `--root` and is skipped by `--skip-counts`.
+
 ## Running locally
 
 ```sh

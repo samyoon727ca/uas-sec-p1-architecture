@@ -17,7 +17,7 @@ When the owner fills in a decision, the change it calls for is made in its own p
   - *Touches:* `validate.yml` (brief job), `brief/build.sh`, `brief/package.json` and `brief/package-lock.json`, and the open edge in `docs/GUIDE.md:101`. No requirement or VE.
   - *Consequence:* catches visual drift too; most effort and the most fragile when a pinned tool changes.
 - **(c) Stop committing the PDF.** Remove `brief/pdr-brief.pdf` and link the CI artifact or a release asset instead.
-  - *Touches:* `brief/pdr-brief.pdf` (deleted), `README.md:9`, `docs/GUIDE.md` (lines 27, 35, 71 and the open edge at 101), `README.md:137`, `validate.yml` if a release step is added. No requirement or VE.
+  - *Touches:* `brief/pdr-brief.pdf` (deleted), `README.md:9`, `docs/GUIDE.md` (lines 27, 35, 71 and the open edge at 101), `README.md:138`, `validate.yml` if a release step is added. No requirement or VE.
   - *Consequence:* nothing to drift; the PDF is no longer readable straight from the repo tree.
 
 **Decision:**

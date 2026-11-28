@@ -430,10 +430,10 @@ class CountClaimsTest(unittest.TestCase):
     """README.md and brief/pdr-brief.md counts are checked against data/."""
 
     def run_on_copy(self, edit=None):
-        """Validate the repo's data against copies of README.md and the brief,
-        after edit(rel, text) -> text is applied to each copy."""
+        """Validate the repo's data against copies of README.md, the brief and
+        docs/05-threat-model.md, after edit(rel, text) -> text is applied."""
         with tempfile.TemporaryDirectory() as tmp:
-            for rel in ("README.md", "brief/pdr-brief.md"):
+            for rel in ("README.md", "brief/pdr-brief.md", "docs/05-threat-model.md"):
                 dest = Path(tmp) / rel
                 dest.parent.mkdir(parents=True, exist_ok=True)
                 text = (ROOT / rel).read_text(encoding="utf-8")
@@ -521,6 +521,8 @@ class CountClaimsTest(unittest.TestCase):
                 encoding="utf-8")
             (Path(tmp) / "brief").mkdir()
             shutil.copy(ROOT / "brief" / "pdr-brief.md", Path(tmp) / "brief" / "pdr-brief.md")
+            (Path(tmp) / "docs").mkdir()
+            shutil.copy(ROOT / "docs" / "05-threat-model.md", Path(tmp) / "docs" / "05-threat-model.md")
             out = io.StringIO()
             with contextlib.redirect_stdout(out):
                 self.assertEqual(vt.main(["--data-dir", str(ROOT / "data"), "--root", tmp]), 1)
@@ -533,6 +535,180 @@ class CountClaimsTest(unittest.TestCase):
             with contextlib.redirect_stdout(out):
                 self.assertEqual(vt.main(["--data-dir", str(Path(tmp) / "data"), "--skip-counts"]), 0)
         self.assertNotIn("file not found", out.getvalue())
+
+
+class PriorityThreatTablesTest(unittest.TestCase):
+    """docs/05-threat-model.md §5.3 and README.md priority-threat tables match data/."""
+
+    def run_on_copy(self, edit=None):
+        """Validate the repo's data against copies of the checked docs after
+        edit(rel, text) -> text is applied to each copy."""
+        with tempfile.TemporaryDirectory() as tmp:
+            for rel in ("README.md", "brief/pdr-brief.md", "docs/05-threat-model.md"):
+                dest = Path(tmp) / rel
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                text = (ROOT / rel).read_text(encoding="utf-8")
+                dest.write_text(edit(rel, text) if edit else text, encoding="utf-8")
+            return vt.validate(ROOT / "data", root=Path(tmp))
+
+    def test_baseline_passes(self):
+        report = vt.validate(ROOT / "data", root=ROOT)
+        self.assertEqual(report.errors, [])
+
+    def test_removed_sr_in_threat_model_fails(self):
+        def edit(rel, text):
+            if rel == "docs/05-threat-model.md":
+                return text.replace(", SR-036 (rotate after loss of custody)", "")
+            return text
+        report = self.run_on_copy(edit)
+        self.assertTrue(
+            any(e.startswith("docs/05-threat-model.md:") and "missing traced requirement(s) SR-036" in e
+                for e in report.errors),
+            report.errors,
+        )
+
+    def test_removed_sr_in_readme_fails(self):
+        def edit(rel, text):
+            if rel == "README.md":
+                return text.replace("SR-023, SR-025, SR-036", "SR-023, SR-025")
+            return text
+        report = self.run_on_copy(edit)
+        self.assertTrue(
+            any(e.startswith("README.md:") and "missing traced requirement(s) SR-036" in e
+                for e in report.errors),
+            report.errors,
+        )
+
+    def test_extra_untraced_sr_in_threat_model_fails(self):
+        def edit(rel, text):
+            if rel == "docs/05-threat-model.md":
+                return text.replace("| SR-022 |", "| SR-022, SR-001 |")
+            return text
+        report = self.run_on_copy(edit)
+        self.assertTrue(
+            any(e.startswith("docs/05-threat-model.md:") and
+                "listed requirement(s) SR-001 do not trace to THR-002" in e
+                for e in report.errors),
+            report.errors,
+        )
+
+    def test_extra_untraced_sr_in_readme_fails(self):
+        def edit(rel, text):
+            if rel == "README.md":
+                return text.replace("SR-001 (tested by VE-01)", "SR-001, SR-002 (tested by VE-01)")
+            return text
+        report = self.run_on_copy(edit)
+        self.assertTrue(
+            any(e.startswith("README.md:") and
+                "listed requirement(s) SR-002 do not trace to THR-001" in e
+                for e in report.errors),
+            report.errors,
+        )
+
+    def test_wrong_repo_in_threat_model_fails(self):
+        cases = [
+            # Replaced repo
+            ("| P3, P4, P6 |", "| P2, P4, P6 |", "evidence repos 'P2, P4, P6' do not match requirements.csv 'P3, P4, P6'"),
+            # Omitted repo (the original P1-07 defect)
+            ("| P3, P4, P6 |", "| P4, P6 |", "evidence repos 'P4, P6' do not match requirements.csv 'P3, P4, P6'"),
+            # Extra repo
+            ("| P3 (VE-01) |", "| P3 (VE-01), P4 |", "evidence repos 'P3, P4' do not match requirements.csv 'P3'"),
+            # Malformed repo token
+            ("| P3 (VE-01) |", "| P3, bogus |", "malformed evidence repo 'bogus'"),
+        ]
+        for old, new, expected in cases:
+            with self.subTest(old=old, new=new):
+                report = self.run_on_copy(
+                    lambda rel, text, o=old, n=new: text.replace(o, n) if rel == "docs/05-threat-model.md" else text
+                )
+                self.assertTrue(
+                    any(e.startswith("docs/05-threat-model.md:") and expected in e for e in report.errors),
+                    report.errors,
+                )
+
+    def test_parentheticals_in_evidence_cell_are_ignored(self):
+        def edit(rel, text):
+            if rel == "docs/05-threat-model.md":
+                return text.replace("| P3 (VE-01) |", "| P3 (VE-01, see P2) |")
+            return text
+        report = self.run_on_copy(edit)
+        self.assertEqual(report.errors, [])
+
+    def test_nested_parentheticals_in_evidence_cell_are_ignored(self):
+        def edit(rel, text):
+            if rel == "docs/05-threat-model.md":
+                return text.replace("| P3 (VE-01) |", "| P3 (VE-01 (see P2)) |")
+            return text
+        report = self.run_on_copy(edit)
+        self.assertEqual(report.errors, [])
+
+    def test_unbalanced_parenthesis_in_evidence_cell_fails(self):
+        def edit(rel, text):
+            if rel == "docs/05-threat-model.md":
+                return text.replace("| P3 (VE-01) |", "| P3 (VE-01)) |")
+            return text
+        report = self.run_on_copy(edit)
+        self.assertTrue(
+            any(e.startswith("docs/05-threat-model.md:") and "malformed evidence repo 'P3 )'" in e
+                for e in report.errors),
+            report.errors,
+        )
+
+    def test_structural_errors_fail(self):
+        threats = {"THR-001": {"_where": "threats.csv:2"}}
+        reqs = {"SR-001": {"evidence_repo": "P3"}}
+        links = [("THR-001", "SR-001")]
+
+        def run_doc(content, check_evidence=True):
+            with tempfile.TemporaryDirectory() as tmp:
+                if content is not None:
+                    (Path(tmp) / "doc.md").write_text(content, encoding="utf-8")
+                report = vt.Report()
+                vt.check_priority_threats(
+                    Path(tmp), threats, reqs, links, report,
+                    tables=[("doc.md", "## Priority", check_evidence)],
+                )
+                return report
+
+        self.assertTrue(any("file not found" in e for e in run_doc(None).errors))
+        self.assertTrue(any("heading '## Priority' not found" in e for e in run_doc("# Other\n").errors))
+        self.assertTrue(any("no markdown table found" in e for e in run_doc("## Priority\n\n## Next\n").errors))
+        self.assertIn("doc.md:3: priority-threat table missing required column 'Mitigated by'", run_doc(
+            "## Priority\n\n| Threat | Evidence |\n|---|---|\n| THR-001 | P3 |\n"
+        ).errors)
+        self.assertIn("doc.md:3: priority-threat table missing required column 'Evidence'", run_doc(
+            "## Priority\n\n| Threat | Mitigated by |\n|---|---|\n| THR-001 | SR-001 |\n",
+            check_evidence=True,
+        ).errors)
+        self.assertTrue(any("heading '## Priority' appears more than once" in e for e in run_doc(
+            "## Priority\n\n| Threat | Mitigated by |\n|---|---|\n| THR-001 | SR-001 |\n\n"
+            "## Priority\n\n| Threat | Mitigated by |\n|---|---|\n| THR-001 | SR-001 |\n",
+            check_evidence=False,
+        ).errors))
+        self.assertTrue(any(e.startswith("doc.md:4:") and "malformed markdown table separator row" in e
+                            for e in run_doc(
+            "## Priority\n\n| Threat | Mitigated by |\n| not a separator | --- |\n| THR-001 | SR-001 |\n",
+            check_evidence=False,
+        ).errors))
+        self.assertTrue(any(e.startswith("doc.md:4:") and "malformed markdown table separator row" in e
+                            for e in run_doc(
+            "## Priority\n\n| Threat | Mitigated by |\n|---|\n| THR-001 | SR-001 |\n",
+            check_evidence=False,
+        ).errors))
+        self.assertTrue(any(e.startswith("doc.md:5:") and "table row has 3 cells, expected 2" in e
+                            for e in run_doc(
+            "## Priority\n\n| Threat | Mitigated by |\n|---|---|\n| THR-001 | SR-001 | extra |\n",
+            check_evidence=False,
+        ).errors))
+        self.assertTrue(any("has no data rows" in e for e in run_doc(
+            "## Priority\n\n| Threat | Mitigated by | Evidence |\n|---|---|---|\n"
+        ).errors))
+        self.assertTrue(any("unknown threat 'THR-999'" in e for e in run_doc(
+            "## Priority\n\n| Threat | Mitigated by | Evidence |\n|---|---|---|\n| THR-999 | SR-001 | P3 |\n"
+        ).errors))
+        self.assertTrue(any("no threat ID in first cell" in e for e in run_doc(
+            "## Priority\n\n| Threat | Mitigated by | Evidence |\n|---|---|---|\n| No ID | SR-001 | P3 |\n"
+        ).errors))
 
 
 if __name__ == "__main__":

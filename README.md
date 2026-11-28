@@ -88,6 +88,7 @@ Traceability is checked automatically on every push. [`tools/validate_trace.py`]
 - a requirement is not covered by a verification event with the same method and evidence repo;
 - a verification event is marked passed or failed without a link to its evidence, pinned to a commit;
 - a count that this README or the brief states (threats, elements, mission-impact ratings, dispositions, requirements by component, method and repo, resiliency techniques and approaches, verification events) differs from the CSVs, or a sentence that states one no longer matches its pattern;
+- a row in the priority-threat tables of this README or [`docs/05-threat-model.md`](docs/05-threat-model.md) (§5.3) omits a requirement traced in `data/trace.csv`, lists an untraced requirement, or disagrees with `data/requirements.csv` on its evidence repos;
 - a generated doc view or the generated SysML model has drifted from the CSVs;
 - the SysML v2 model fails validation on the OMG Pilot Implementation.
 
