@@ -4,7 +4,7 @@
 # Downloads the pinned Jupyter SysML kernel release (it bundles the Pilot
 # Implementation and the standard library) into .cache/sysml, verifies its
 # SHA-256, and runs tools/sysml/ValidateSysML.java over the model files.
-# Requires Java 21+, curl, unzip and sha256sum.
+# Requires Java 21 (CI runs Temurin 21), curl, unzip and sha256sum.
 set -euo pipefail
 
 RELEASE="2026-08"

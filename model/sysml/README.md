@@ -27,7 +27,7 @@ The CSVs remain the single source of truth. The security model is regenerated fr
 **Choice.** Validation uses the OMG SysML v2 Pilot Implementation [SYSML-PILOT]: release `2026-08`, distributed as the Jupyter SysML kernel 0.62.0 (EPL-2.0).
 - **Download.** `tools/sysml/validate.sh` downloads the kernel zip from the Pilot Implementation's GitHub release and checks it against a pinned SHA-256. That is the same hash conda-forge's recipe pins.
 - **Validation.** `tools/sysml/ValidateSysML.java` then loads the bundled standard library and runs each file through the implementation's own API (`SysMLInteractive.process`). It reports syntax errors, semantic errors and warnings with line and column, and exits non-zero on any error.
-- **Requirements.** Java 21 only. No Eclipse, Jupyter or conda.
+- **Requirements.** Java 21: CI runs Temurin 21 (`java-version` in `.github/workflows/validate.yml`), and other versions are untested. No Eclipse, Jupyter or conda.
 
 **Trade-off:**
 

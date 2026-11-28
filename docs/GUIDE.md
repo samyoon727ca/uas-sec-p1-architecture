@@ -67,7 +67,7 @@ python -m unittest discover -s tests
 python tools/validate_trace.py
 python tools/render_views.py --check
 python tools/gen_sysml.py --check
-tools/sysml/validate.sh   # Java 21+; downloads the pinned SysML v2 Pilot Implementation once
+tools/sysml/validate.sh   # Java 21; downloads the pinned SysML v2 Pilot Implementation once
 CHROME_PATH=/path/to/chrome brief/build.sh   # Node 22+; rebuilds brief/pdr-brief.pdf
 python tools/check_p2_snapshot.py            # needs network; overview/p2-snapshot matches P2
 CHROME_PATH=/path/to/chrome overview/build.sh   # Node 22+, git; rebuilds overview/overview.pdf
@@ -89,7 +89,7 @@ What needs something special, and how CI handles it (`.github/workflows/validate
 
 All 131 unit tests pass with `python -m unittest discover -s tests`, and `validate_trace.py`, `render_views.py --check` and `gen_sysml.py --check` pass on the current data (run locally on Python 3.12.1 while writing this guide).
 
-- **Trace rules** (every rule listed in the README's "Verification evidence" section): `tests/test_validate_trace.py` builds small datasets that break each rule (STRIDE applicability, missing parents, method and repo mismatch, unpinned evidence, catalog IDs, series manifest rules) and checks the real baseline passes (`test_baseline_is_valid`).
+- **Trace rules** (every `validate_trace.py` rule listed in the README's "Verification evidence" section): `tests/test_validate_trace.py` builds small datasets that break each rule (STRIDE applicability, missing parents, method and repo mismatch, unpinned evidence, catalog IDs, series manifest rules) and checks the real baseline passes (`test_baseline_is_valid`).
 - **Generated views:** `tests/test_render_views.py` covers marker splicing, status cells, snapshot fallback per VE and rejection of an invalid snapshot; CI's `render_views.py --check` catches drift in the committed docs.
 - **Series status:** `tests/test_check_series_status.py` (one fixture per error in `tests/fixtures/series-status/`) and `tests/test_fetch_series_status.py` (404 keeps a snapshot, other errors fail, size cap at and over 1 MiB, stale snapshot removed only when every fetch succeeds, `file://` base URL).
 - **SysML:** `tests/test_gen_sysml.py` checks escaping, that every element has an alias, and that the committed model is current; the `sysml` CI job validates both model files on the OMG Pilot Implementation.
