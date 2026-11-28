@@ -16,7 +16,7 @@ This repo is the security architecture, threat model and derived requirements fo
 
 All P1 deliverables are in place and checked in CI: architecture, threat model, resiliency mapping, requirements, verification plan, SysML v2 model and brief. Still open, each tracked to its owner:
 
-- **OI-01:** QGroundControl and PX4 signing interoperability. Closed by VE-02 in P3.
+- **OI-01:** QGroundControl and PX4 signing interoperability. To be closed by VE-02 in P3 (partly evidenced; its QGroundControl steps wait on uas-sec-p3-pki#6).
 - **OI-02:** per-node authentication to the FC. Trade study in P3.
 - **OI-03:** no independent C2 path. Deferred to a later P1 revision.
 - **DD-06:** re-pin from PX4 `v1.18.0-rc1` to `v1.18.0` once PX4 releases it.
@@ -55,7 +55,7 @@ Radio → CC → FC (DD-01). C2 is protected in layers:
 
 1. **WireGuard tunnel, GCS to CC (DD-02).** Carries MAVLink and video, and provides confidentiality across the untrusted RF link.
 2. **CC allowlist (DD-04).** Filters MAVLink messages and commands. It is defense in depth, not an authentication point.
-3. **MAVLink signing, GCS to FC.** This is design intent. It is not yet demonstrated with the pinned QGroundControl and PX4 versions (open item OI-01, closed by VE-02).
+3. **MAVLink signing, GCS to FC.** This is design intent. It is not yet demonstrated with the pinned QGroundControl and PX4 versions (open item OI-01, to be closed by VE-02, which is partly evidenced; its QGroundControl steps wait on uas-sec-p3-pki#6).
 
 The FC–CC boundary uses only signed MAVLink over UART, and uXRCE-DDS is disabled (DD-03), because MAVLink signing doesn't cover DDS.
 
@@ -77,7 +77,9 @@ Read more:
 
 ## Verification evidence
 
-Traceability is checked automatically on every push. [`tools/validate_trace.py`](tools/validate_trace.py) fails the build if any of these hold:
+The repo is checked automatically on every push by [`validate.yml`](.github/workflows/validate.yml). Each tool below fails the build if any of its conditions hold.
+
+[`tools/validate_trace.py`](tools/validate_trace.py) fails if:
 
 - a threat is neither mitigated nor explicitly accepted;
 - a requirement has no parent threat, has no allocated component, or can't be verified;
@@ -88,9 +90,16 @@ Traceability is checked automatically on every push. [`tools/validate_trace.py`]
 - a requirement is not covered by a verification event with the same method and evidence repo;
 - a verification event is marked passed or failed without a link to its evidence, pinned to a commit;
 - a count that this README or the brief states (threats, elements, mission-impact ratings, dispositions, requirements by component, method and repo, resiliency techniques and approaches, verification events) differs from the CSVs, or a sentence that states one no longer matches its pattern;
-- a row in the priority-threat tables of this README or [`docs/05-threat-model.md`](docs/05-threat-model.md) (§5.3) omits a requirement traced in `data/trace.csv`, lists an untraced requirement, or disagrees with `data/requirements.csv` on its evidence repos;
-- a generated doc view or the generated SysML model has drifted from the CSVs;
-- the SysML v2 model fails validation on the OMG Pilot Implementation.
+- a row in the priority-threat tables of this README or [`docs/05-threat-model.md`](docs/05-threat-model.md) (§5.3) omits a requirement traced in `data/trace.csv`, lists an untraced requirement, or disagrees with `data/requirements.csv` on its evidence repos.
+
+The other checks in the same workflow:
+
+- [`tools/check_series_status.py`](tools/check_series_status.py) fails if a series status snapshot in `data/series-status/` is malformed or claims a verification event not allocated to its repo;
+- [`tools/render_views.py`](tools/render_views.py) `--check` fails if a generated doc view has drifted from the CSVs;
+- [`tools/gen_sysml.py`](tools/gen_sysml.py) `--check` fails if the generated SysML model has drifted from the CSVs;
+- [`tools/sysml/validate.sh`](tools/sysml/validate.sh) fails if the SysML v2 model fails validation on the OMG Pilot Implementation;
+- [`tools/check_p2_snapshot.py`](tools/check_p2_snapshot.py) fails if `overview/p2-snapshot/` differs from P2 at its pinned commit;
+- `python -m unittest discover -s tests` runs the unit tests of the tools and of these docs ([`tests/`](tests/)), and fails if any test fails.
 
 The column rules are in [`data/README.md`](data/README.md).
 
@@ -134,7 +143,7 @@ python -m unittest discover -s tests
 python tools/validate_trace.py
 python tools/render_views.py --check
 python tools/gen_sysml.py --check
-tools/sysml/validate.sh   # Java 21+; downloads the pinned SysML v2 Pilot Implementation once
+tools/sysml/validate.sh   # Java 21; downloads the pinned SysML v2 Pilot Implementation once
 CHROME_PATH=/path/to/chrome brief/build.sh   # Node 22+; rebuilds brief/pdr-brief.pdf
 python tools/check_p2_snapshot.py            # needs network; overview/p2-snapshot matches P2
 CHROME_PATH=/path/to/chrome overview/build.sh   # Node 22+, git; rebuilds overview/overview.pdf

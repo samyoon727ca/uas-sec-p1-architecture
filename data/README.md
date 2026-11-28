@@ -110,10 +110,20 @@ Each series repo reports its status in a `series-status.json` file that may clai
 
 The hand-written priority-threat tables in [`docs/05-threat-model.md`](../docs/05-threat-model.md) (§5.3) and [`README.md`](../README.md) are checked against `trace.csv` and `requirements.csv` (`PRIORITY_THREAT_TABLES` in `tools/validate_trace.py`). For each row, the set of `SR-###` IDs in "Mitigated by" must equal the requirements that `trace.csv` links to the row's `THR-###` IDs. In `docs/05-threat-model.md`, the set of plain `P#` repo IDs in "Evidence" (ignoring parentheticals such as `(VE-01)`) must equal the `evidence_repo` values of those requirements in `requirements.csv`. A missing heading, table or column is an error. Like the count check, this reads under `--root` and is skipped by `--skip-counts`.
 
+## Tools that read this folder
+
+- `tools/validate_trace.py` checks every rule above.
+- `tools/render_views.py` generates the doc views and the README series table from the CSVs and `series-status/`.
+- `tools/gen_sysml.py` generates `model/sysml/uas_security.sysml` from the CSVs.
+- `tools/check_series_status.py` checks series status files against `series.csv` and `verification.csv`.
+- `tools/fetch_series_status.py` reads `series.csv` and writes each series repo's status file into `series-status/`.
+- `tools/gen_overview.py` generates the project overview's tables and statuses from the CSVs.
+
 ## Running locally
 
 ```sh
 python -m unittest discover -s tests   # validator self-tests
 python tools/validate_trace.py         # validate data/
 python tools/render_views.py           # regenerate doc views (--check in CI)
+python tools/gen_sysml.py              # regenerate model/sysml/uas_security.sysml (--check in CI)
 ```
