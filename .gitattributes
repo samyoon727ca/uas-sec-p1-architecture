@@ -1,3 +1,7 @@
+# Text files are stored and checked out with LF on every platform, whatever
+# core.autocrlf says. This rule comes first so the rules below override it.
+* text=auto eol=lf
+
 # The P2 snapshot must stay byte-for-byte equal to P2 (tools/check_p2_snapshot.py),
 # so no line-ending conversion is applied to it on any platform.
 overview/p2-snapshot/** -text
